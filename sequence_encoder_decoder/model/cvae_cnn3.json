@@ -1,0 +1,10 @@
+{
+  "n_input": [
+    28,
+    28,
+    1
+  ],
+  "n_z": 2,
+  "label_size": 10,
+  "batch_size": 100
+}
