@@ -2,18 +2,27 @@ import numpy as np
 import pandas as pd
 
 
-def sst(path="./", drop_neutral=True, cut_off=3):
+def sst(path="./", drop_neutral=True, cut_off=None, binary=False):
     df = sst_formatting(path)
     label = quantize_label(df["label"].values)
     df["label"] = label
+    original_size = len(df)
     if drop_neutral:
         df = df[df.label != 3]
+        if binary:
+            label = df.label.values
+            label[label > 3] = 1
+            label[label != 1] = 0
+            df["label"] = label
+            bal = [np.sum(label == 1), np.sum(label == 0)]
+        else:
+            bal = [np.sum(label == i) for i in [1, 2, 4, 5]]
+    else:
+        bal = [np.sum(label == i) for i in [1, 2, 3, 4, 5]]
     if cut_off:
-        df["count"] = [len(i.split(' ')) for i in df["data"].values]
-
-
-
-
+        df["cnt"] = [len(i.split(' ')) for i in df["data"].values]
+        df = df[df.cnt >= cut_off]
+    return {"label": df.label.values, "sentence": df.data.values, "original_size": original_size, "balance": bal}
 
 
 def sst_formatting(path):
