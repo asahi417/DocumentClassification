@@ -12,10 +12,6 @@ build
 dist
 model_log
 
-README.md
-setup.py
-tests
+
 LSTM_Encoder
 data
-stanfordSentimentTreebank.zip
-stanfordSentimentTreebank
