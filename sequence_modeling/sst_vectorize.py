@@ -46,6 +46,6 @@ def sst_vectorize(_length, sst_path, embed_path, save_path):
 if __name__ == '__main__':
     # padding length
     _length = 30
-    _sst_path = "./data/stanfordSentimentTreebank"
-    _embed_path = "./data/GoogleNews-vectors-negative300.bin"
+    _sst_path = "./stanfordSentimentTreebank"
+    _embed_path = "./GoogleNews-vectors-negative300.bin"
     sst_vectorize(_length, _sst_path, _embed_path, "./data")
