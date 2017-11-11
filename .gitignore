@@ -12,7 +12,8 @@ build
 dist
 model_log
 
-
+GoogleNews-vectors-negative300.bin
+stanfordSentimentTreebank
 LSTM_Encoder
 data
 
