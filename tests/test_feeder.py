@@ -14,7 +14,7 @@ class Test(unittest.TestCase):
         pass
 
     def test_feeder(self):
-        path = "./data/stanfordSentimentTreebank"
+        path = "./stanfordSentimentTreebank"
         re = sst(path, drop_neutral=True, binary=False, cut_off=3)
         fed = BatchFeeder(re["sentence"], re["label"], 100)
         tmp = fed.next()
