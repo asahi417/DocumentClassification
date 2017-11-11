@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from sequence_modeling.sst_vectorize import padding
+from sequence_modeling.vectorize import padding
 
 
 class Test(unittest.TestCase):
