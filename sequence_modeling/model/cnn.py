@@ -1,6 +1,15 @@
 import tensorflow as tf
 from tensorflow.contrib.layers import xavier_initializer_conv2d, variance_scaling_initializer, xavier_initializer
-import numpy as np
+import tensorflow.contrib.slim as slim
+
+
+def convolution(x, weight_shape, stride, initializer, padding="SAME"):
+    """ 2d convolution layer
+    - weight_shape: width, height, input channel, output channel
+    """
+    weight = tf.Variable(initializer(shape=weight_shape))
+    bias = tf.Variable(tf.zeros([weight_shape[-1]]), dtype=tf.float32)
+    return tf.add(tf.nn.conv2d(x, weight, strides=[1, stride[0], stride[1], 1], padding=padding), bias)
 
 
 def full_connected(x, weight_shape, initializer):
@@ -12,13 +21,12 @@ def full_connected(x, weight_shape, initializer):
     return tf.add(tf.matmul(x, weight), bias)
 
 
-class LSTM(object):
-    """ LSTM classifier
-    input -> bi LSTM x 3 -> last hidden unit -> FC -> output
+class CNN(object):
+    """ CNN classifier
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
-                 save_path=None, load_model=None, max_grad_norm=None, r_keep_prob=0.8):
+                 save_path=None, load_model=None, max_grad_norm=None, keep_prob=0.9):
         """
         :param dict network_architecture: dictionary with following elements
             n_input: shape of input (list: sequence, feature, channel)
@@ -33,7 +41,7 @@ class LSTM(object):
         self.activation = activation
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
-        self.r_keep_prob = r_keep_prob
+        self.keep_prob = keep_prob
 
         # Initializer
         if "relu" in self.activation.__name__:
@@ -61,33 +69,35 @@ class LSTM(object):
     def _create_network(self):
         """ Create Network, Define Loss Function and Optimizer """
         # tf Graph input
-        # input: length, channel
         self.x = tf.placeholder(tf.float32, [None] + self.network_architecture["n_input"], name="input")
         self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
         self.is_training = tf.placeholder(tf.bool)
-        _r_keep_prob = self.r_keep_prob if self.is_training is True else 1
+        _keep_prob = self.keep_prob if self.is_training is True else 1
 
-        # print(self.x.shape)
-        cell_bw, cell_fw = [], []
-        for i in range(1, 4):
-            _cell = tf.nn.rnn_cell.LSTMCell(num_units=self.network_architecture["n_hidden_%i" % i], state_is_tuple=True)
-            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True, dtype=tf.float32)
-            cell_fw.append(_cell)
+        print(self.x.shape, self.y.shape)
+        _layer = convolution(self.x, self.network_architecture["filter1"], self.network_architecture["stride1"],
+                             self.ini_c)
+        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _layer = self.activation(_layer)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
+        print(_layer.shape)
+        _layer = convolution(_layer, self.network_architecture["filter2"], self.network_architecture["stride2"],
+                             self.ini_c)
+        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _layer = self.activation(_layer)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
+        print(_layer.shape)
+        _layer = convolution(_layer, self.network_architecture["filter3"], self.network_architecture["stride3"],
+                             self.ini_c)
+        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _layer = self.activation(_layer)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
+        print(_layer.shape)
+        _layer = slim.flatten(_layer)
+        _shape = _layer.shape.as_list()
+        _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
 
-            _cell = tf.nn.rnn_cell.LSTMCell(num_units=self.network_architecture["n_hidden_%i" % i], state_is_tuple=True)
-            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True, dtype=tf.float32)
-            cell_bw.append(_cell)
-        cell_bw, cell_fw = tf.contrib.rnn.MultiRNNCell(cell_bw), tf.contrib.rnn.MultiRNNCell(cell_fw)
-
-        (output_fw, output_bw), (states_fw, states_bw) = \
-            tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=self.x, dtype=tf.float32)
-        cell = tf.concat([states_fw[-1][-1], states_bw[-1][-1]], axis=1)
-        if self.network_architecture["label_size"] == 2:
-            cell = full_connected(cell, [cell.shape.as_list()[-1], 1], self.ini)
-        else:
-            cell = full_connected(cell, [cell.shape.as_list()[-1], self.network_architecture["label_size"]], self.ini)
-        self.prediction = tf.nn.sigmoid(cell)
-
+        self.prediction = tf.nn.softmax(_logit)
         # Loss
         if self.network_architecture["label_size"] == 2:
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
@@ -106,7 +116,6 @@ class LSTM(object):
             self.train = optimizer.apply_gradients(zip(grads, _var))
         else:
             self.train = optimizer.minimize(self.loss)
-
         # saver
         self.saver = tf.train.Saver()
 
@@ -116,11 +125,14 @@ if __name__ == '__main__':
     # Ignore warning message by tensor flow
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     net = {
-        "n_input": [10, 300],
-        "n_hidden_1": 64,
-        "n_hidden_2": 128,
-        "n_hidden_3": 256,
         "label_size": 2,
+        "n_input": [10, 300, 1],
+        "filter1": [2, 20, 1, 8],
+        "filter2": [2, 10, 8, 16],
+        "filter3": [2, 5, 16, 32],
+        "stride1": [1, 1],
+        "stride2": [1, 1],
+        "stride3": [1, 1],
         "batch_size": 100
-        }
-    LSTM(net)
+    }
+    CNN(net)

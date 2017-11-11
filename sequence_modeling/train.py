@@ -4,49 +4,50 @@ import json
 import sys
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 from os.path import abspath as abp, dirname as drn
+from .feeder import BatchFeeder
 
 
-def mnist_train(epoch, lr, clip):
+def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./"):
     """ Train model based on mini-batch of input data.
 
-    :param str model: name of model (cvae_cnn3, cvae_fc3, vae)
+    :param str model: name of model (cnn, lstm)
     :param int epoch:
     :param float lr: learning rate
     :param float clip: value of gradient clipping
+    :param x: input data
+    :param y: output data
+    :param float valid: data feeder
+    :param str save_path: path to save
     :return:
     """
 
-    from . import model_info
-
     # load model
     path = drn(abp(__file__))
-    with open("%s/model/%s.json" % (path, model_info["model"])) as f:
-        if model_info["model"] == "cvae_cnn3":
-            from .model import CvaeCnn3
-            _model = CvaeCnn3(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
+    with open("%s/model/%s.json" % (path, model)) as f:
+        if model == "cnn":
+            from .model import CNN
+            _model = CNN(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
             inp_img = True
-        elif model_info["model"] == "cvae_fc3":
-            from .model import CvaeFc3
-            _model = CvaeFc3(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
+        elif model == "lstm":
+            from .model import LSTM
+            _model = LSTM(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
             inp_img = False
         else:
-            sys.exit("unknown model %s " % model_info["model"])
+            sys.exit("unknown model %s " % model)
 
-    path = "%s/%s/" % (model_info["model_path"], model_info["model"])
+    path = "%s/%s/" % (save_path, model)
 
     # load mnist
-    data = read_data_sets('MNIST_data', one_hot=True)
-    n = data.train.num_examples
-    n_iter = int(n / _model.network_architecture["batch_size"])
+    feeder = BatchFeeder(x, y, _model.network_architecture["batch_size"], True, valid)
+    n_iter = int(feeder.n / _model.network_architecture["batch_size"])
     # logger
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
     logger = create_log(path+"log")
     logger.info(_model.__doc__)
     logger.info("train: data size(%i), batch num(%i), batch size(%i)"
-                % (n, n_iter, _model.network_architecture["batch_size"]))
+                % (feeder.n, n_iter, _model.network_architecture["batch_size"]))
     result = []
     # Initializing the tensor flow variables
     _model.sess.run(tf.global_variables_initializer())
@@ -54,16 +55,22 @@ def mnist_train(epoch, lr, clip):
         _result = []
         for _b in range(n_iter):
             # train
-            _x, _y = data.train.next_batch(_model.network_architecture["batch_size"])
+            _x, _y = feeder.next()
             if inp_img:
-                _x = np.expand_dims(_x.reshape(_model.network_architecture["batch_size"], 28, 28), 3)
-            feed_val = [_model.summary, _model.loss, _model.re_loss, _model.latent_loss, _model.train]
-            feed_dict = {_model.x: _x, _model.y: _y}
-            summary, loss, re_loss, latent_loss, _ = _model.sess.run(feed_val, feed_dict=feed_dict)
-            _result.append([loss, re_loss, latent_loss])
+                _x = np.expand_dims(_x, 3)
+
+            feed_val = [_model.summary, _model.loss, _model.accuracy, _model.train]
+            feed_dict = {_model.x: _x, _model.y: _y, _model.is_training: True}
+            summary, loss, acc, _ = _model.sess.run(feed_val, feed_dict=feed_dict)
+            _result.append([loss, acc])
             _model.writer.add_summary(summary, int(_b + _e * _model.network_architecture["batch_size"]))
-        _result = np.mean(_result, 0)
-        logger.info("epoch %i: loss %0.3f, re loss %0.3f, latent loss %0.3f" % (_e, _result[0], _result[1], _result[2]))
+
+        _x_valid = np.expand_dims(feeder.valid_x, 3) if inp_img else feeder.valid_x
+        feed_dict = {_model.x: _x_valid, _model.y: feeder.valid_y, _model.is_training: False}
+        loss, acc = _model.sess.run([_model.loss, _model.accuracy], feed_dict=feed_dict)
+        _result = np.append(np.mean(_result, 0), [loss, acc])
+        logger.info("epoch %i: acc %0.3f, loss %0.3f, train acc %0.3f, train loss %0.3f"
+                    % (_e, acc, loss, _result[1], _result[0]))
         result.append(_result)
         if _e % 50 == 0:
             _model.saver.save(_model.sess, "%s/progress-%i-model.ckpt" % (path, _e))
@@ -89,3 +96,4 @@ def create_log(name):
     logger.addHandler(handler1)
     logger.addHandler(handler2)
     return logger
+

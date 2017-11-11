@@ -3,3 +3,4 @@ numpy
 matplotlib
 nltk
 pandas
+gensim

@@ -2,15 +2,27 @@ import numpy as np
 import pandas as pd
 
 
-def sst(path="./", drop_neutral=True, cut_off=None, binary=False):
+def sst(path="./stanfordSentimentTreebank", drop_neutral=True, cut_off=None, binary=False):
+    """
+
+    :param str path: path to the `stanfordSentimentTreebank`
+    :param bool drop_neutral: if ignore neutral label or not
+    :param cut_off: cut off the term based on frequency. If None, no cut off
+    :param binary: binarize label or not
+    :return dict: Stanford Sentiment Treebank data
+    """
     df = sst_formatting(path)
     label = quantize_label(df["label"].values)
     df["label"] = label
     original_size = len(df)
+    if cut_off:
+        df["cnt"] = [len(i.split(' ')) for i in df["data"].values]
+        df = df[df.cnt >= cut_off]
+        label = df["label"].values
     if drop_neutral:
         df = df[df.label != 3]
         if binary:
-            label = df.label.values
+            label = df["label"].values
             label[label > 3] = 1
             label[label != 1] = 0
             df["label"] = label
@@ -19,9 +31,6 @@ def sst(path="./", drop_neutral=True, cut_off=None, binary=False):
             bal = [np.sum(label == i) for i in [1, 2, 4, 5]]
     else:
         bal = [np.sum(label == i) for i in [1, 2, 3, 4, 5]]
-    if cut_off:
-        df["cnt"] = [len(i.split(' ')) for i in df["data"].values]
-        df = df[df.cnt >= cut_off]
     return {"label": df.label.values, "sentence": df.data.values, "original_size": original_size, "balance": bal}
 
 
@@ -59,3 +68,15 @@ def quantize_label(score):
     return label.astype(int)
 
 
+if __name__ == '__main__':
+    data = sst("./data/stanfordSentimentTreebank", binary=True)
+    length = []
+    for _d in data["sentence"]:
+        length.append(len(_d.split(' ')))
+    print("Word distribution")
+    print("max", np.sort(length)[-100:])
+    print("min", np.sort(length)[:100])
+    print("mean %0.2f" % np.mean(length))
+    print("median %0.2f" % np.median(length))
+    print("balance", data["balance"])
+    print("size: %i -> %i" % (data["original_size"], len(data["label"])))
