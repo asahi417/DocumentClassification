@@ -23,6 +23,7 @@ def full_connected(x, weight_shape, initializer):
 
 class CNN(object):
     """ CNN classifier
+    - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
@@ -38,6 +39,7 @@ class CNN(object):
         :param str load_model: load saved model
         """
         self.network_architecture = network_architecture
+        self.binary_class = True if self.network_architecture["label_size"] == 2 else False
         self.activation = activation
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
@@ -70,43 +72,55 @@ class CNN(object):
         """ Create Network, Define Loss Function and Optimizer """
         # tf Graph input
         self.x = tf.placeholder(tf.float32, [None] + self.network_architecture["n_input"], name="input")
-        self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
+        if self.binary_class:
+            self.y = tf.placeholder(tf.float32, [None], name="output")
+        else:
+            self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
         self.is_training = tf.placeholder(tf.bool)
         _keep_prob = self.keep_prob if self.is_training is True else 1
 
-        print(self.x.shape, self.y.shape)
+        # -print(self.x.shape, self.y.shape)
         _layer = convolution(self.x, self.network_architecture["filter1"], self.network_architecture["stride1"],
                              self.ini_c)
         _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
-        print(_layer.shape)
+        # -print(_layer.shape)
         _layer = convolution(_layer, self.network_architecture["filter2"], self.network_architecture["stride2"],
                              self.ini_c)
         _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
-        print(_layer.shape)
+        # -print(_layer.shape)
         _layer = convolution(_layer, self.network_architecture["filter3"], self.network_architecture["stride3"],
                              self.ini_c)
         _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
-        print(_layer.shape)
+        # -print(_layer.shape)
         _layer = slim.flatten(_layer)
         _shape = _layer.shape.as_list()
-        _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
 
-        self.prediction = tf.nn.softmax(_logit)
-        # Loss
-        if self.network_architecture["label_size"] == 2:
+        # Prediction, Loss and Accuracy
+        if self.binary_class:
+            # last layer to get logit and prediction
+            _logit = tf.squeeze(full_connected(_layer, [_shape[-1], 1], self.ini))
+            self.prediction = tf.sigmoid(_logit)
+            # logistic loss
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
             self.loss = - tf.reduce_mean(_loss)
+            # accuracy
+            _prediction = tf.cast((self.prediction > 0.5), tf.float32)
+            self.accuracy = 1 - tf.reduce_mean(tf.abs(self.y - _prediction))
         else:
+            # last layer to get logit
+            _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
+            self.prediction = tf.nn.softmax(_logit)
+            # cross entropy
             self.loss = - tf.reduce_sum(self.y * tf.log(self.prediction + 1e-8))
-        # Accuracy
-        correct_prediction = tf.equal(tf.argmax(self.y, 1), tf.argmax(self.prediction, 1))
-        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+            # accuracy
+            correct_prediction = tf.equal(tf.argmax(self.y, 1), tf.argmax(self.prediction, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         # Define optimizer
         optimizer = tf.train.AdamOptimizer(self.learning_rate)
@@ -126,7 +140,7 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     net = {
         "label_size": 2,
-        "n_input": [10, 300, 1],
+        "n_input": [30, 300, 1],
         "filter1": [2, 20, 1, 8],
         "filter2": [2, 10, 8, 16],
         "filter3": [2, 5, 16, 32],

@@ -1,7 +1,8 @@
 import os
 import argparse
+import json
 import numpy as np
-import sequence_modeling as sed
+import sequence_modeling
 
 
 def get_options(parser):
@@ -15,23 +16,24 @@ def get_options(parser):
                         choices=None, help='Learning rate. (default: 0.005)', metavar=None)
     parser.add_argument('-c', '--clip', action='store', nargs='?', const=None, default=None, type=float,
                         choices=None, help='Gradient clipping. (default: None)', metavar=None)
+    parser.add_argument('-p', '--pad', action='store', nargs='?', const=None, default=30, type=int,
+                        choices=None, help='Gradient clipping. (default: None)', metavar=None)
     return parser.parse_args()
 
 
 if __name__ == '__main__':
-    _length = 30
-    _sst_path = "./data/stanfordSentimentTreebank"
-    _embed_path = "./data/GoogleNews-vectors-negative300.bin"
-
     # Ignore warning message by tensor flow
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     _parser = argparse.ArgumentParser(description='This script is ...', formatter_class=argparse.RawTextHelpFormatter)
     args = get_options(_parser)
 
-    sed.sst_vectorize(_length, _sst_path, _embed_path, "./data")
-    data = np.load("./data/vectorized_data_%i.npz" % _length)
-    feeder = sed.train(epoch=args.epoch, clip=args.clip, lr=args.lr, model=args.model,
-                       x=data["sentence"], y=data["label"], valid=0.3, save_path="./log")
+    with open("./network_architectures/%s.json" % args.model) as f:
+        net = json.load(f)
+
+    feeder = sequence_modeling.ChunkBatchFeeder(data_path="./data/embed_%i" % args.pad, batch_size=net["batch_size"],
+                                                chunk_for_validation=2)
+    sequence_modeling.train_chunk(epoch=args.epoch, clip=args.clip, lr=args.lr, model=args.model,
+                                  feeder=feeder, save_path="./log", network_architecture=net)
 
 
 

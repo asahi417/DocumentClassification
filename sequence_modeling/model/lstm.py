@@ -13,7 +13,8 @@ def full_connected(x, weight_shape, initializer):
 
 class LSTM(object):
     """ LSTM classifier
-    input -> bi LSTM x 3 -> last hidden unit -> FC -> output
+    - input -> bi LSTM x 3 -> last hidden unit -> FC -> output
+    - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
@@ -29,6 +30,7 @@ class LSTM(object):
         :param str load_model: load saved model
         """
         self.network_architecture = network_architecture
+        self.binary_class = True if self.network_architecture["label_size"] == 2 else False
         self.activation = activation
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
@@ -62,7 +64,10 @@ class LSTM(object):
         # tf Graph input
         # input: length, channel
         self.x = tf.placeholder(tf.float32, [None] + self.network_architecture["n_input"], name="input")
-        self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
+        if self.binary_class:
+            self.y = tf.placeholder(tf.float32, [None], name="output")
+        else:
+            self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
         self.is_training = tf.placeholder(tf.bool)
         _r_keep_prob = self.r_keep_prob if self.is_training is True else 1
 
@@ -70,32 +75,41 @@ class LSTM(object):
         cell_bw, cell_fw = [], []
         for i in range(1, 4):
             _cell = tf.nn.rnn_cell.LSTMCell(num_units=self.network_architecture["n_hidden_%i" % i], state_is_tuple=True)
-            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True, dtype=tf.float32)
+            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True,
+                                                  dtype=tf.float32)
             cell_fw.append(_cell)
 
             _cell = tf.nn.rnn_cell.LSTMCell(num_units=self.network_architecture["n_hidden_%i" % i], state_is_tuple=True)
-            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True, dtype=tf.float32)
+            _cell = tf.nn.rnn_cell.DropoutWrapper(_cell, input_keep_prob=_r_keep_prob, variational_recurrent=True,
+                                                  dtype=tf.float32)
             cell_bw.append(_cell)
         cell_bw, cell_fw = tf.contrib.rnn.MultiRNNCell(cell_bw), tf.contrib.rnn.MultiRNNCell(cell_fw)
 
         (output_fw, output_bw), (states_fw, states_bw) = \
             tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=self.x, dtype=tf.float32)
         cell = tf.concat([states_fw[-1][-1], states_bw[-1][-1]], axis=1)
-        if self.network_architecture["label_size"] == 2:
-            cell = full_connected(cell, [cell.shape.as_list()[-1], 1], self.ini)
-        else:
-            cell = full_connected(cell, [cell.shape.as_list()[-1], self.network_architecture["label_size"]], self.ini)
-        self.prediction = tf.nn.sigmoid(cell)
+        _shape = cell.shape.as_list()
 
-        # Loss
-        if self.network_architecture["label_size"] == 2:
+        # Prediction, Loss and Accuracy
+        if self.binary_class:
+            # last layer to get logit and prediction
+            _logit = tf.squeeze(full_connected(cell, [_shape[-1], 1], self.ini))
+            self.prediction = tf.sigmoid(_logit)
+            # logistic loss
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
             self.loss = - tf.reduce_mean(_loss)
+            # accuracy
+            _prediction = tf.cast((self.prediction > 0.5), tf.float32)
+            self.accuracy = 1 - tf.reduce_mean(tf.abs(self.y - _prediction))
         else:
+            # last layer to get logit
+            _logit = full_connected(cell, [_shape[-1], self.network_architecture["label_size"]], self.ini)
+            self.prediction = tf.nn.softmax(_logit)
+            # cross entropy
             self.loss = - tf.reduce_sum(self.y * tf.log(self.prediction + 1e-8))
-        # Accuracy
-        correct_prediction = tf.equal(tf.argmax(self.y, 1), tf.argmax(self.prediction, 1))
-        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+            # accuracy
+            correct_prediction = tf.equal(tf.argmax(self.y, 1), tf.argmax(self.prediction, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         # Define optimizer
         optimizer = tf.train.AdamOptimizer(self.learning_rate)

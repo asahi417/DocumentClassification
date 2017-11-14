@@ -14,7 +14,7 @@ class Test(unittest.TestCase):
         pass
 
     def test_sst(self):
-        path = "./stanfordSentimentTreebank"
+        path = "./data/stanfordSentimentTreebank"
         re = sst(path, drop_neutral=False, binary=False, cut_off=None)
         self.assertEqual(len(re["label"]), re["original_size"])
         self.assertEqual(len(re["label"]), len(re["sentence"]))
@@ -32,7 +32,7 @@ class Test(unittest.TestCase):
         self.assertEqual(np.sum(re["balance"]), len(re["label"]))
 
     def test_sst_cutoff(self):
-        path = "./stanfordSentimentTreebank"
+        path = "./data/stanfordSentimentTreebank"
 
         re = sst(path, drop_neutral=True, binary=False, cut_off=3)
         self.assertEqual(len(re["label"]), len(re["sentence"]))
