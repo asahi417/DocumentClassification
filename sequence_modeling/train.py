@@ -8,11 +8,12 @@ from os.path import abspath as abp, dirname as drn
 from .feeder import BatchFeeder
 
 
-def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./"):
+def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./", network_architecture=None):
     """ Train model based on mini-batch of input data.
 
     :param str model: name of model (cnn, lstm)
     :param int epoch:
+    :param str network_architecture:
     :param float lr: learning rate
     :param float clip: value of gradient clipping
     :param x: input data
@@ -24,17 +25,19 @@ def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./"):
 
     # load model
     path = drn(abp(__file__))
-    with open("%s/model/%s.json" % (path, model)) as f:
-        if model == "cnn":
-            from .model import CNN
-            _model = CNN(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
-            inp_img = True
-        elif model == "lstm":
-            from .model import LSTM
-            _model = LSTM(network_architecture=json.load(f), learning_rate=lr, max_grad_norm=clip, save_path=path)
-            inp_img = False
-        else:
-            sys.exit("unknown model %s " % model)
+    if not network_architecture:
+        with open("%s/model/%s.json" % (path, model)) as f:
+            network_architecture = json.load(f)
+    if model == "cnn":
+        from .model import CNN
+        _model = CNN(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path)
+        volumed_input = True
+    elif model == "lstm":
+        from .model import LSTM
+        _model = LSTM(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path)
+        volumed_input = False
+    else:
+        sys.exit("unknown model %s " % model)
 
     path = "%s/%s/" % (save_path, model)
 
@@ -56,8 +59,9 @@ def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./"):
         for _b in range(n_iter):
             # train
             _x, _y = feeder.next()
-            if inp_img:
+            if volumed_input:
                 _x = np.expand_dims(_x, 3)
+                _y = np.expand_dims(_y, 1)
 
             feed_val = [_model.summary, _model.loss, _model.accuracy, _model.train]
             feed_dict = {_model.x: _x, _model.y: _y, _model.is_training: True}
@@ -65,8 +69,9 @@ def train(epoch, lr, clip, model, x, y, valid=0.3, save_path="./"):
             _result.append([loss, acc])
             _model.writer.add_summary(summary, int(_b + _e * _model.network_architecture["batch_size"]))
 
-        _x_valid = np.expand_dims(feeder.valid_x, 3) if inp_img else feeder.valid_x
-        feed_dict = {_model.x: _x_valid, _model.y: feeder.valid_y, _model.is_training: False}
+        _x_valid = np.expand_dims(feeder.valid_x, 3) if volumed_input else feeder.valid_x
+        _y_valid = np.expand_dims(feeder.valid_y, 1)
+        feed_dict = {_model.x: _x_valid, _model.y: _y_valid, _model.is_training: False}
         loss, acc = _model.sess.run([_model.loss, _model.accuracy], feed_dict=feed_dict)
         _result = np.append(np.mean(_result, 0), [loss, acc])
         logger.info("epoch %i: acc %0.3f, loss %0.3f, train acc %0.3f, train loss %0.3f"

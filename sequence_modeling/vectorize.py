@@ -33,12 +33,13 @@ def vectorize(sentences, label, length, embed_path, save_path):
 
     if not os.path.exists(save_path):
         os.makedirs(save_path, exist_ok=True)
-    logger = create_log("%s/embedding_%i.log" % (save_path, length))
+    logger = create_log("%s/embedding.log" % save_path)
     logger.info("loading model .....")
     model = gensim.models.KeyedVectors.load_word2vec_format(embed_path, binary=True)
     cnt = 0
     proper_index = []
     vector = []
+    # vector = sparse.csr_matrix(np.empty((0, int(length * model.vector_size))))
 
     cnt_for_log, full_size = 10, len(sentences) - 1
 
@@ -55,15 +56,23 @@ def vectorize(sentences, label, length, embed_path, save_path):
             proper_index.append(ind)
             _vec = padding(np.vstack(_vec), length)
             vector.append(np.expand_dims(_vec, 0))
+
+            # _vec = padding(np.vstack(_vec), length).flatten()
+            # _vec = sparse.csr_matrix(np.expand_dims(_vec, 0))
+            # vector = sparse.vstack([vector, _vec])
+
         if np.floor(ind / full_size * 100).astype(int) == cnt_for_log:
             logger.info("%i %s" % (cnt_for_log, "%"))
             cnt_for_log += 10
-    logger.info("finally shaped %i x %i x %i ....." % (len(vector), length, model.vector_size))
+    # logger.info("finally shaped %i x %i x %i ....." % (len(vector), length, model.vector_size))
+    # logger.info("finally shaped (%i, %i)" % vector.shape)
+    logger.info("nan: %i" % cnt)
     logger.info("saving vectors .....")
+    # sparse.save_npz("%s/vectorized_pad%i_model%i_sentence.npz" % (save_path, length, model.vector_size), vector)
     vector = np.vstack(vector)
-    label = label[proper_index]
-    np.savez("%s/vectorized_data_%i.npz" % (save_path, length),
-             sentence=vector, label=label, pad_length=length, nan_cnt=cnt)
+    np.save("%s/vectorized_pad%i_model%i_sentence.npy" % (save_path, length, model.vector_size), vector)
+    np.save("%s/vectorized_pad%i_model%i_label.npy" % (save_path, length, model.vector_size), label[proper_index])
+    # np.save("%s/vectorized_%i_label.npy" % (save_path, length), label[proper_index])
 
 
 # if __name__ == '__main__':
