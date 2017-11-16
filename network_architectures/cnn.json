@@ -6,6 +6,5 @@
   "filter3": [2, 5, 16, 32],
   "stride1": [1, 1],
   "stride2": [1, 1],
-  "stride3": [1, 1],
-  "batch_size": 100
+  "stride3": [1, 1]
 }

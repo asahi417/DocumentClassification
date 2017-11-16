@@ -1,0 +1,11 @@
+{
+  "label_size": 2,
+  "n_input": [45, 300, 1],
+  "filter1": [12, 300, 1, 8],
+  "filter2": [6, 1, 8, 16],
+  "filter3": [3, 1, 16, 32],
+  "stride1": [2, 300],
+  "stride2": [2, 1],
+  "stride3": [2, 1],
+  "batch_size": 100
+}
