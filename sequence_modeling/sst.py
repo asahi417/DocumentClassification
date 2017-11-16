@@ -7,7 +7,7 @@ def sst(path="./stanfordSentimentTreebank", drop_neutral=True, cut_off=None, bin
 
     :param str path: path to the `stanfordSentimentTreebank`
     :param bool drop_neutral: if ignore neutral label or not
-    :param cut_off: cut off the term based on frequency. If None, no cut off
+    :param cut_off: cut off the word based on frequency. (remove word, which frequency < cut_off) If None, no cut off
     :param binary: binarize label or not
     :return dict: Stanford Sentiment Treebank data
     """

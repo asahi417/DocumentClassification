@@ -19,12 +19,6 @@ def padding(x, _len):
         return np.vstack([x, pad])
 
 
-def randomize(target):
-    index = np.arange(len(target))
-    np.random.shuffle(index)
-    return target[index]
-
-
 def vectorize_chunk(sentences, label, length, embed_path, save_path, chunk_size=1000):
     """
     Vectorize sentences based on given embedding model for supervised learning
@@ -44,10 +38,16 @@ def vectorize_chunk(sentences, label, length, embed_path, save_path, chunk_size=
     logger = create_log("%s/embedding.log" % save_path)
     logger.info("loading model .....")
     model = gensim.models.KeyedVectors.load_word2vec_format(embed_path, binary=True)
-    save_index, nan_cnt = 0, 0
+    save_index, nan_cnt, error_cnt = 0, 0, 0
     vector, proper_index = [], []
 
-    sentences = randomize(sentences)
+    # randomize index
+    assert len(sentences) == len(label)
+    index = np.arange(len(sentences))
+    np.random.shuffle(index)
+    sentences, label = sentences[index], label[index]
+
+    random_dict = dict()
 
     for ind, _d in enumerate(sentences):
         _vec = []
@@ -55,7 +55,10 @@ def vectorize_chunk(sentences, label, length, embed_path, save_path, chunk_size=
             try:
                 _vec.append(model[__d])
             except KeyError:
-                pass
+                error_cnt += 1
+                if __d not in random_dict.keys():
+                    random_dict[__d] = np.random.rand(model.vector_size)
+                _vec.append(random_dict[__d])
         if len(_vec) == 0:
             nan_cnt += 1
         else:
@@ -82,6 +85,7 @@ def vectorize_chunk(sentences, label, length, embed_path, save_path, chunk_size=
     # logger.info("finally shaped %i x %i x %i ....." % (len(vector), length, model.vector_size))
     # logger.info("finally shaped (%i, %i)" % vector.shape)
     logger.info("nan: %i" % nan_cnt)
+    logger.info("key error: %i" % error_cnt)
 
 
 # if __name__ == '__main__':

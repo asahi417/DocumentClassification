@@ -7,7 +7,7 @@ import tensorflow as tf
 from os.path import abspath as abp, dirname as drn
 
 
-def train_chunk(epoch, lr, clip, model, feeder, save_path="./", network_architecture=None):
+def train_chunk(epoch, lr, clip, keep_prob, r_keep_prob, model, feeder, save_path="./", network_architecture=None):
     """ Train model based on mini-batch of input data.
 
     :param str model: name of model (cnn, lstm)
@@ -16,6 +16,8 @@ def train_chunk(epoch, lr, clip, model, feeder, save_path="./", network_architec
     :param float lr: learning rate
     :param float clip: value of gradient clipping
     :param feeder:
+    :param float keep_prob: keep prob for dropout
+    :param float r_keep_prob: keep prob for dropout
     :param str save_path: path to save
     :return:
     """
@@ -27,23 +29,46 @@ def train_chunk(epoch, lr, clip, model, feeder, save_path="./", network_architec
             network_architecture = json.load(f)
     if model == "cnn":
         from .model import CNN
-        _model = CNN(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path)
+        _model = CNN(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                     keep_prob=keep_prob)
+        volumed_input = True
+    elif model == "cnn2":
+        from .model import CNN2
+        _model = CNN2(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                      keep_prob=keep_prob)
+        volumed_input = True
+    elif model == "cnn3":
+        from .model import CNN3
+        _model = CNN3(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                      keep_prob=keep_prob)
+        volumed_input = True
+    elif model == "cnn4":
+        from .model import CNN4
+        _model = CNN4(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                      keep_prob=keep_prob)
+        volumed_input = True
+    elif model == "cnn5":
+        from .model import CNN5
+        _model = CNN5(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                      keep_prob=keep_prob)
         volumed_input = True
     elif model == "lstm":
         from .model import LSTM
-        _model = LSTM(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path)
+        _model = LSTM(network_architecture=network_architecture, learning_rate=lr, max_grad_norm=clip, save_path=path,
+                      r_keep_prob=r_keep_prob)
         volumed_input = False
     else:
         sys.exit("unknown model %s " % model)
 
-    path = "%s/%s/" % (save_path, model)
+    path = "%s/%s_b%i_l%0.4f_c%s_e%i_k%0.2f_rk%0.2f/"\
+           % (save_path, model, feeder.batch_size, lr, str(clip), epoch, keep_prob, r_keep_prob)
 
     # logger
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
     logger = create_log(path+"log")
     logger.info(_model.__doc__)
-    logger.info("train: epoch (%i), iteration in batch (%i), batch size(%i)"
+    logger.info("train: epoch (%i), iteration in an epoch (%i), batch size(%i)"
                 % (epoch, feeder.iteration_in_epoch, feeder.batch_size))
 
     result = []
@@ -61,7 +86,7 @@ def train_chunk(epoch, lr, clip, model, feeder, save_path="./", network_architec
             # print(pred.shape, np.sum(pred == 0), np.sum(pred == 1), np.sum(_y == 0), np.sum(_y == 1))
             # print(pred[0:10])
             _result.append([loss, acc])
-            _model.writer.add_summary(summary, int(_b + _e * _model.network_architecture["batch_size"]))
+            _model.writer.add_summary(summary, int(_b + _e * feeder.batch_size))
 
         # validation
         _result_valid = []

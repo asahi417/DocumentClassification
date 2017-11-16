@@ -19,7 +19,7 @@ class ChunkBatchFeeder:
     index_chunk = 0  # index for chunk  (reset for each epoch)
     index_chunk_valid = 0  # index for validation chunk  (reset for each epoch)
 
-    def __init__(self, data_path, batch_size, chunk_for_validation=1):
+    def __init__(self, data_path, batch_size, chunk_for_validation=1, balance_validation=False):
         """
         Parameter
         ----------------
@@ -27,6 +27,8 @@ class ChunkBatchFeeder:
         y: output data, numpy array, 1st dimension should be data length
         batch_size: int mini batch size
         ini_random: (optional, default True) initialize with random
+        balance_validation: (optional) balancing validation data
+            *WARNING: This option is only working for binary data.
         """
 
         self.batch_size = batch_size
@@ -36,6 +38,10 @@ class ChunkBatchFeeder:
             _tmp = glob("%s/*.npz" % data_path)
             self.chunk_list_valid = [_tmp.pop(0) for _ in range(chunk_for_validation)]
             self.chunk_list = np.array(_tmp)
+            if balance_validation:
+                self.next_valid = self._next_valid_binary_balancing
+            else:
+                self.next_valid = self._next_valid
         else:
             self.validation = False
             self.chunk_list = np.array(glob("%s/*.npz" % data_path))
@@ -80,7 +86,7 @@ class ChunkBatchFeeder:
         self.index_data_in_epoch += 1
         return _x, _y
 
-    def next_valid(self):
+    def _next_valid(self):
         """ next data chunk for validation """
         if not self.validation:
             raise ValueError("No validation setting.")
@@ -89,3 +95,30 @@ class ChunkBatchFeeder:
         data = np.load(self.chunk_list_valid[self.index_chunk_valid])
         self.index_chunk_valid += 1
         return data["x"], data["y"]
+
+    def _next_valid_binary_balancing(self):
+        """ next data chunk for validation """
+        if not self.validation:
+            raise ValueError("No validation setting.")
+        if self.index_chunk_valid == self.iteration_in_epoch_valid:
+            self.index_chunk_valid = 0
+        data = np.load(self.chunk_list_valid[self.index_chunk_valid])
+        self.index_chunk_valid += 1
+        __y, __x = data["y"], data["x"]
+        # True data
+        __y0 = __y[__y == 0]
+        __x0 = __x[__y == 0]
+        # False data
+        __y1 = __y[__y == 1]
+        __x1 = __x[__y == 1]
+        # Reshaped for minimum label data
+        _ind = int(np.min([len(__y0), len(__y1)]))
+        return np.vstack([__x0[:_ind], __x1[:_ind]]), np.hstack([__y0[:_ind], __y1[:_ind]])
+
+
+            # def balance_validation(self):
+    #     for i in self.chunk_list_valid:
+    #         target, cnt = np.unique(np.load(i)["y"], return_counts=True)
+    #         for _t, _c in zip(target, cnt):
+    #             if _t == 0:
+    #                 _tmp[_i] = cnt[_i]

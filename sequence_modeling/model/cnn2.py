@@ -22,9 +22,8 @@ def full_connected(x, weight_shape, initializer):
 
 
 class CNN(object):
-    """ CNN classifier
-    Convolution filter is locally for feature and sequence direction
-    - [convolution -> max pooling -> activation -> dropout] x 3
+    """ CNN classifier ver 2
+    [convolution -> activation -> dropout] x 3
     - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
@@ -84,13 +83,13 @@ class CNN(object):
         # -print(self.x.shape, self.y.shape)
         _layer = convolution(self.x, self.network_architecture["filter1"], self.network_architecture["stride1"],
                              self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        # _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 1, 1], strides=[1, 2, 2, 1], padding='SAME')
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
         # -print(_layer.shape)
         _layer = convolution(_layer, self.network_architecture["filter2"], self.network_architecture["stride2"],
                              self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        # _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 1, 1], strides=[1, 2, 2, 1], padding='SAME')
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
         # -print(_layer.shape)
@@ -143,12 +142,12 @@ if __name__ == '__main__':
     net = {
         "label_size": 2,
         "n_input": [45, 300, 1],
-        "filter1": [2, 300, 1, 8],
-        "filter2": [2, 10, 8, 16],
-        "filter3": [2, 5, 16, 32],
-        "stride1": [1, 1],
-        "stride2": [1, 1],
-        "stride3": [1, 1],
+        "filter1": [12, 300, 1, 8],
+        "filter2": [6, 1, 8, 16],
+        "filter3": [3, 1, 16, 32],
+        "stride1": [2, 300],
+        "stride2": [2, 1],
+        "stride3": [2, 1],
         "batch_size": 100
     }
     CNN(net)

@@ -22,9 +22,8 @@ def full_connected(x, weight_shape, initializer):
 
 
 class CNN(object):
-    """ CNN classifier
-    Convolution filter is locally for feature and sequence direction
-    - [convolution -> max pooling -> activation -> dropout] x 3
+    """ CNN classifier ver 3
+    CNN over feature  -> max pooling over sequence -> FC x2
     - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
@@ -81,32 +80,29 @@ class CNN(object):
         self.is_training = tf.placeholder(tf.bool)
         _keep_prob = self.keep_prob if self.is_training is True else 1
 
-        # -print(self.x.shape, self.y.shape)
-        _layer = convolution(self.x, self.network_architecture["filter1"], self.network_architecture["stride1"],
-                             self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        # CNN over feature
+        print(self.x.shape)
+        _kernel = [12, self.network_architecture["n_input"][1], 1, 16]
+        _stride = [6, 1]
+        _layer = convolution(self.x, _kernel, _stride, self.ini_c, padding="VALID")
         _layer = self.activation(_layer)
-        _layer = tf.nn.dropout(_layer, _keep_prob)
-        # -print(_layer.shape)
-        _layer = convolution(_layer, self.network_architecture["filter2"], self.network_architecture["stride2"],
-                             self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        _layer = self.activation(_layer)
-        _layer = tf.nn.dropout(_layer, _keep_prob)
-        # -print(_layer.shape)
-        _layer = convolution(_layer, self.network_architecture["filter3"], self.network_architecture["stride3"],
-                             self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        _layer = self.activation(_layer)
-        _layer = tf.nn.dropout(_layer, _keep_prob)
-        _layer = slim.flatten(_layer)
-        # -print(_layer.shape)
-        _shape = _layer.shape.as_list()
+        print(_layer.shape)
 
+        # Pooling over sequential direction
+        _kernel = [1, _layer.shape.as_list()[1], 1, 1]
+        _layer = tf.nn.max_pool(_layer, ksize=_kernel, strides=[1, 1, 1, 1], padding='VALID')
+
+        print(_layer.shape)
+        _layer = slim.flatten(_layer)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
+        print(_layer.shape)
         # Prediction, Loss and Accuracy
+        _shape = _layer.shape.as_list()
+        _layer = tf.squeeze(full_connected(_layer, [_shape[-1], 8], self.ini))
+        _layer = tf.nn.dropout(_layer, _keep_prob)
         if self.binary_class:
             # last layer to get logit and prediction
-            _logit = tf.squeeze(full_connected(_layer, [_shape[-1], 1], self.ini))
+            _logit = tf.squeeze(full_connected(_layer, [8, 1], self.ini))
             self.prediction = tf.sigmoid(_logit)
             # logistic loss
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
@@ -116,7 +112,8 @@ class CNN(object):
             self.accuracy = 1 - tf.reduce_mean(tf.abs(self.y - _prediction))
         else:
             # last layer to get logit
-            _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
+            # _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
+            _logit = full_connected(_layer, [8, self.network_architecture["label_size"]], self.ini)
             self.prediction = tf.nn.softmax(_logit)
             # cross entropy
             self.loss = - tf.reduce_sum(self.y * tf.log(self.prediction + 1e-8))
@@ -142,13 +139,6 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     net = {
         "label_size": 2,
-        "n_input": [45, 300, 1],
-        "filter1": [2, 300, 1, 8],
-        "filter2": [2, 10, 8, 16],
-        "filter3": [2, 5, 16, 32],
-        "stride1": [1, 1],
-        "stride2": [1, 1],
-        "stride3": [1, 1],
-        "batch_size": 100
+        "n_input": [40, 300, 1]
     }
     CNN(net)
