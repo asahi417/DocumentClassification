@@ -22,18 +22,20 @@ def full_connected(x, weight_shape, initializer):
 
 
 class CNN(object):
-    """ CNN classifier ver 2
-    [convolution -> activation -> dropout] x 3
+    """ 3 layer CNN with spatial filter
+
+    convolution over all feature (kernel: 12) -> convolution layer 1 (kernel: 6) -> convolution layer 2 (kernel: 3)
+    - if input [40, 300]: [40, 300, 1] -> [20, 1, 8] -> [10, 1, 16]
+    - each convolution layer has [convolution -> activation -> dropout]
     - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
-                 save_path=None, load_model=None, max_grad_norm=None, keep_prob=0.9):
+                 load_model=None, max_grad_norm=None, keep_prob=0.9):
         """
         :param dict network_architecture: dictionary with following elements
             n_input: shape of input (list: sequence, feature, channel)
             label_size: unique number of label
-            batch_size: size of mini-batch
         :param activation: activation function (tensor flow function)
         :param float learning_rate:
         :param str save_path: path to save
@@ -62,8 +64,6 @@ class CNN(object):
         self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
         # Summary writer for tensor board
         self.summary = tf.summary.merge_all()
-        if save_path:
-            self.writer = tf.summary.FileWriter(save_path, self.sess.graph)
         # Load model
         if load_model:
             tf.reset_default_graph()
@@ -81,26 +81,25 @@ class CNN(object):
         _keep_prob = self.keep_prob if self.is_training is True else 1
 
         # -print(self.x.shape, self.y.shape)
-        _layer = convolution(self.x, self.network_architecture["filter1"], self.network_architecture["stride1"],
-                             self.ini_c)
-        # _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 1, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _kernel = [12, self.network_architecture["n_input"][1], 1, 8]
+        _stride = [2, self.network_architecture["n_input"][1]]
+        _layer = convolution(self.x, _kernel, _stride, self.ini_c)
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
+
         # -print(_layer.shape)
-        _layer = convolution(_layer, self.network_architecture["filter2"], self.network_architecture["stride2"],
-                             self.ini_c)
-        # _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 1, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _layer = convolution(_layer, [6, 1, 8, 16], [2, 1], self.ini_c)
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
+
         # -print(_layer.shape)
-        _layer = convolution(_layer, self.network_architecture["filter3"], self.network_architecture["stride3"],
-                             self.ini_c)
-        _layer = tf.nn.max_pool(_layer, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        _layer = convolution(_layer, [3, 1, 16, 8], [2, 1], self.ini_c)
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
+
         _layer = slim.flatten(_layer)
-        # -print(_layer.shape)
         _shape = _layer.shape.as_list()
+        # -print(_layer.shape)
 
         # Prediction, Loss and Accuracy
         if self.binary_class:
@@ -139,15 +138,5 @@ if __name__ == '__main__':
     import os
     # Ignore warning message by tensor flow
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-    net = {
-        "label_size": 2,
-        "n_input": [45, 300, 1],
-        "filter1": [12, 300, 1, 8],
-        "filter2": [6, 1, 8, 16],
-        "filter3": [3, 1, 16, 32],
-        "stride1": [2, 300],
-        "stride2": [2, 1],
-        "stride3": [2, 1],
-        "batch_size": 100
-    }
+    net = {"label_size": 2, "n_input": [40, 300, 1]}  #, "kernel_1": 12, "kernel_2": [6, 1], "kernel_3": [3, 1]}
     CNN(net)

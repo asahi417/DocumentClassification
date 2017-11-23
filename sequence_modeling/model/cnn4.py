@@ -22,13 +22,16 @@ def full_connected(x, weight_shape, initializer):
 
 
 class CNN(object):
-    """ CNN classifier ver 4
-    CNN over feature  -> CNN over sequence -> FC x2
-    - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
+    """ spatial CNN and temporal CNN
+
+        convolution over all feature (kernel: 12) -> convolution over all temporal
+        - if input [40, 300]: [40, 300, 1] -> [20, 1, 16] -> [1, 1, 32]
+        - each convolution layer has [convolution -> activation -> dropout]
+        - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
-                 save_path=None, load_model=None, max_grad_norm=None, keep_prob=0.9):
+                 load_model=None, max_grad_norm=None, keep_prob=0.9):
         """
         :param dict network_architecture: dictionary with following elements
             n_input: shape of input (list: sequence, feature, channel)
@@ -36,7 +39,6 @@ class CNN(object):
             batch_size: size of mini-batch
         :param activation: activation function (tensor flow function)
         :param float learning_rate:
-        :param str save_path: path to save
         :param str load_model: load saved model
         """
         self.network_architecture = network_architecture
@@ -62,8 +64,6 @@ class CNN(object):
         self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
         # Summary writer for tensor board
         self.summary = tf.summary.merge_all()
-        if save_path:
-            self.writer = tf.summary.FileWriter(save_path, self.sess.graph)
         # Load model
         if load_model:
             tf.reset_default_graph()
@@ -81,28 +81,29 @@ class CNN(object):
         _keep_prob = self.keep_prob if self.is_training is True else 1
 
         # CNN over feature
-        print(self.x.shape)
+        # -print(self.x.shape)
         _kernel = [12, self.network_architecture["n_input"][1], 1, 16]
-        _stride = [6, 1]
-        _layer = convolution(self.x, _kernel, _stride, self.ini_c, padding="VALID")
+        _stride = [2, self.network_architecture["n_input"][1]]
+        _layer = convolution(self.x, _kernel, _stride, self.ini_c)
         _layer = self.activation(_layer)
-        print(_layer.shape)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
 
-        # CNN over sequential direction
+        # CNN over  all temporal
+        # -print(_layer.shape)
         _kernel = [_layer.shape.as_list()[1], 1, 16, 32]
         _layer = convolution(_layer, _kernel, [1, 1], self.ini_c, padding="VALID")
+        _layer = self.activation(_layer)
+        _layer = tf.nn.dropout(_layer, _keep_prob)
 
-        print(_layer.shape)
+        # -print(_layer.shape)
         _layer = slim.flatten(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
-        print(_layer.shape)
+
         # Prediction, Loss and Accuracy
         _shape = _layer.shape.as_list()
-        _layer = tf.squeeze(full_connected(_layer, [_shape[-1], 8], self.ini))
-        _layer = tf.nn.dropout(_layer, _keep_prob)
         if self.binary_class:
             # last layer to get logit and prediction
-            _logit = tf.squeeze(full_connected(_layer, [8, 1], self.ini))
+            _logit = tf.squeeze(full_connected(_layer, [_shape[-1], 1], self.ini))
             self.prediction = tf.sigmoid(_logit)
             # logistic loss
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
@@ -113,7 +114,7 @@ class CNN(object):
         else:
             # last layer to get logit
             # _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
-            _logit = full_connected(_layer, [8, self.network_architecture["label_size"]], self.ini)
+            _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
             self.prediction = tf.nn.softmax(_logit)
             # cross entropy
             self.loss = - tf.reduce_sum(self.y * tf.log(self.prediction + 1e-8))

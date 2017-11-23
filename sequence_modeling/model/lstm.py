@@ -18,7 +18,7 @@ class LSTM(object):
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
-                 save_path=None, load_model=None, max_grad_norm=None, r_keep_prob=0.8):
+                 load_model=None, max_grad_norm=None, keep_prob=0.8):
         """
         :param dict network_architecture: dictionary with following elements
             n_input: shape of input (list: sequence, feature, channel)
@@ -34,7 +34,7 @@ class LSTM(object):
         self.activation = activation
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
-        self.r_keep_prob = r_keep_prob
+        self.keep_prob = keep_prob
 
         # Initializer
         if "relu" in self.activation.__name__:
@@ -52,8 +52,6 @@ class LSTM(object):
         self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
         # Summary writer for tensor board
         self.summary = tf.summary.merge_all()
-        if save_path:
-            self.writer = tf.summary.FileWriter(save_path, self.sess.graph)
         # Load model
         if load_model:
             tf.reset_default_graph()
@@ -69,7 +67,7 @@ class LSTM(object):
         else:
             self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
         self.is_training = tf.placeholder(tf.bool)
-        _r_keep_prob = self.r_keep_prob if self.is_training is True else 1
+        _r_keep_prob = self.keep_prob if self.is_training is True else 1
 
         # print(self.x.shape)
         cell_bw, cell_fw = [], []

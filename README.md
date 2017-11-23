@@ -36,6 +36,7 @@ In python,
 >>> data = sequence_modeling.sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
 >>> sentences = data["sentence"]
 >>> label = data["label"]
+>>> model = sequence_modeling.model.CNN3()
 >>> sequence_modeling.vectorize_chunk(sentences=sentences, label=label, length=40, chunk_size=5000,
                                       embed_path="./data/GoogleNews-vectors-negative300.bin",
                                       save_path="./data/embed_p40_c2")
@@ -62,6 +63,7 @@ or you can use sample script by
 ```
 python sample_train.py cnn3
 ```
+
 
 ### References
 - Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.

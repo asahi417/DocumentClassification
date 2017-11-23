@@ -15,7 +15,7 @@ def sst(path="./stanfordSentimentTreebank", drop_neutral=True, cut_off=None, bin
     label = quantize_label(df["label"].values)
     df["label"] = label
     original_size = len(df)
-    if cut_off:
+    if cut_off is not None:
         df["cnt"] = [len(i.split(' ')) for i in df["data"].values]
         df = df[df.cnt >= cut_off]
         label = df["label"].values

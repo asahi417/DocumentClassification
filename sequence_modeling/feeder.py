@@ -1,47 +1,83 @@
 import numpy as np
 
 
+def randomize(x, y=None):
+    """ Randomize numpy array."""
+    index = [i for i in range(len(x))]
+    np.random.shuffle(index)
+    if y is not None:
+        return x[index], y[index]
+    else:
+        return x[index]
+
+
 class BatchFeeder:
-    """ Simple feeder of mini-batch for feeding a subset of numpy matrix into tf network. """
+    """ Batch feeder for train model."""
+    _index = 0
+    _index_valid = 0
 
-    def __init__(self, x, y, batch_size, ini_random=True, validation=0.7):
+    def __init__(self, inputs, outputs, batch_size, validation=0.2, process=None):
         """
-        Parameter
-        ----------------
-        X: input data, numpy array, 1st dimension should be data length
-        y: output data, numpy array, 1st dimension should be data length
-        batch_size: int mini batch size
-        ini_random: (optional, default True) initialize with random
+        :param outputs: outputs data, first dimension is iterator
+        :param inputs: input data, first dimension is iterator
+        :param int batch_size: batch size
+        :param float validation: proportion of validation data
+        :param process: (optional) list of pre-processing function or single function
         """
-
-        # assert len(x) == len(y)  # check whether X and Y have the matching sample size.
-        self.x, self.y, self.n, self.index = x, y, len(x), 0
         self.batch_size = batch_size
+        self.process = process
+        # if validation, split chunk into validation and training, get validation chunk
         if validation:
-            self.randomize()
-            self.create_validation(validation)
+            inputs, outputs = randomize(inputs, outputs)
+            ind = int(np.floor(len(inputs) * validation))
+            self.x, self.x_valid = inputs[:ind], inputs[ind:]
+            self.y, self.y_valid = outputs[:ind], outputs[ind:]
+            self.iterator_length_valid = int(np.floor(len(self.y_valid) / self.batch_size))
         else:
-            self.valid_x = self.valid_y = None
-            if ini_random:
-                self.randomize()
+            self.x, self.y = inputs, outputs
+        self.iterator_length = int(np.floor(len(self.y) / self.batch_size))
 
     def next(self):
-        if self.index + self.batch_size > self.n:
-            self.index = 0
-            self.randomize()
-        _x = self.x[self.index:self.index + self.batch_size]
-        _y = self.y[self.index:self.index + self.batch_size]
-        self.index += self.batch_size
-        return _x, _y
+        """ next batch (size is `self.batch_size`) """
+        if self._index + self.batch_size >= len(self.y):
+            self._index = 0
+            self.x, self.y = randomize(self.x, self.y)
+        _x = self.x[self._index:self._index + self.batch_size]
+        _y = self.y[self._index:self._index + self.batch_size]
+        self._index += self.batch_size
+        if self.process is not None:
+            if type(self.process) == list:
+                return [_process(_x) for _process in self.process], _y
+            else:
+                return self.process(_x), _y
+        else:
+            return _x, _y
 
-    def randomize(self):
-        index = np.arange(self.n)
-        np.random.shuffle(index)
-        self.x, self.y = self.x[index], self.y[index]
+    def next_valid(self):
+        """ next balanced validation batch (size is `self.batch_size`) """
+        if self._index_valid + self.batch_size >= len(self.y_valid):
+            self._index_valid = 0
+            # self.x_valid, self.y_valid = randomize(self.x_valid, self.y_valid)
+        _x = self.x_valid[self._index_valid:self._index_valid + self.batch_size]
+        _y = self.y_valid[self._index_valid:self._index_valid + self.batch_size]
+        self._index_valid += self.batch_size
 
-    def create_validation(self, ratio):
-        ratio = np.floor(len(self.x)*ratio).astype(int)
-        self.valid_x, self.valid_y = self.x[-1 * ratio:], self.y[-1 * ratio:]
-        self.x, self.y = self.x[:-1 * ratio], self.y[:-1 * ratio]
-        self.n = len(self.x)
+        # binary label index
+        __y0 = _y[_y == 0]
+        __y1 = _y[_y == 1]
+        __x0 = _x[_y == 0]
+        __x1 = _x[_y == 1]
+
+        # Reshaped for minimum label data
+        _ind = int(np.min([len(__y0), len(__y1)]))
+        _y = np.hstack([__y0[:_ind], __y1[:_ind]])
+        _x = np.hstack([__x0[:_ind], __x1[:_ind]])
+        if self.process is not None:
+            if type(self.process) == list:
+                return [_process(_x) for _process in self.process], _y
+            else:
+                return self.process(_x), _y
+        else:
+            return _x, _y
+
 

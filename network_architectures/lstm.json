@@ -1,7 +1,0 @@
-{
-  "n_input": [30, 300],
-  "n_hidden_1": 64,
-  "n_hidden_2": 128,
-  "n_hidden_3": 256,
-  "label_size": 2
-}
