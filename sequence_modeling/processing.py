@@ -29,8 +29,12 @@ def clean_word(word):
 
 
 class Process:
-    """
-
+    """ Preprcessing functions
+    Usage
+    ```
+    import Process
+    p = Process(mode="onehot", parameter={"length_word": 40, "length_char": 33}
+    p(data)
     """
 
     def __init__(self, mode, parameter):
