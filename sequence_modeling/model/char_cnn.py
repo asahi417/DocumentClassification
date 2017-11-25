@@ -60,6 +60,8 @@ def embedding_word(x, embed_dim=30):
 
 class CharCNN(object):
     """ character-level CNN
+    `Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.`
+
         - inputs:
             - onehot char vector (max word num in sentence, max char num in word, character size)
             - embedded vector of word (max word num in sentence, embedded dimension)

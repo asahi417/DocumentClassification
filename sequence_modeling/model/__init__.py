@@ -1,5 +1,5 @@
 from .lstm import LSTM
-from .cnn2 import CNN as CNN2
-from .cnn3 import GapCNN
-from .cnn4 import CNN as CNN4
+from .deep_cnn import DeepCNN
+from .gap_cnn import GapCNN
+from .shallow_cnn import ShallowCNN
 from .char_cnn import CharCNN
