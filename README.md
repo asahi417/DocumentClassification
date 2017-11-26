@@ -64,7 +64,7 @@ python sample_train.py char_cnn -e 300 -b 100 -l 0.0001
 ```
 then you will get following log.
 <p align="center">
-  <img src="./img/learning.png" width="500">
+  <img src="./img/learning.png" width="900">
   <br><i> training progress log</i>
 </p>
 
