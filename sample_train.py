@@ -12,8 +12,8 @@ def get_options(parser):
                         choices=None, help='Epoch number. (default: 300)', metavar=None)
     parser.add_argument('-b', '--batch', action='store', nargs='?', const=None, default=100, type=int,
                         choices=None, help='Batch size. (default: 100)', metavar=None)
-    parser.add_argument('-l', '--lr', action='store', nargs='?', const=None, default=0.0001, type=float,
-                        choices=None, help='Learning rate. (default: 0.0001)', metavar=None)
+    parser.add_argument('-l', '--lr', action='store', nargs='?', const=None, default=0.00005, type=float,
+                        choices=None, help='Learning rate. (default: 0.00005)', metavar=None)
     parser.add_argument('-c', '--clip', action='store', nargs='?', const=None, default=None, type=float,
                         choices=None, help='Gradient clipping. (default: None)', metavar=None)
     parser.add_argument('-k', '--keep', action='store', nargs='?', const=None, default=1, type=float,
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     _x, _y = data["sentence"], data["label"]
 
     # train
-    feeder = sequence_modeling.BatchFeeder(_x, _y, batch_size=args.batch, validation=0.2, process=pre_process)
+    feeder = sequence_modeling.BatchFeeder(_x, _y, batch_size=args.batch, validation=0.05, process=pre_process)
     sequence_modeling.train(epoch=args.epoch, model=_model, feeder=feeder, save_path=path, model_inputs=model_inputs)
 
 

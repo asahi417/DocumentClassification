@@ -29,7 +29,7 @@ class BatchFeeder:
         # if validation, split chunk into validation and training, get validation chunk
         if validation:
             inputs, outputs = randomize(inputs, outputs)
-            ind = int(np.floor(len(inputs) * validation))
+            ind = int(np.floor(len(inputs) * (1 - validation)))
             self.x, self.x_valid = inputs[:ind], inputs[ind:]
             self.y, self.y_valid = outputs[:ind], outputs[ind:]
             self.iterator_length_valid = int(np.floor(len(self.y_valid) / self.batch_size))
