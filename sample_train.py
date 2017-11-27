@@ -61,7 +61,7 @@ if __name__ == '__main__':
     args = get_options(_parser)
 
     # path
-    path = "./log/%s/l%0.4f_e%i" % (args.model, args.lr, args.epoch)
+    path = "./log/%s/l%0.6f_e%i" % (args.model, args.lr, args.epoch)
     if args.clip:
         path += "_c%0.2f" % args.clip
     if args.keep != 1:
