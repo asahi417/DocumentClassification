@@ -3,6 +3,7 @@ import argparse
 import sequence_modeling
 import gensim
 import numpy as np
+from data.sst import sst
 
 
 def get_options(parser):
@@ -72,14 +73,10 @@ if __name__ == '__main__':
     _model = _model(network_architecture=net, learning_rate=args.lr, max_grad_norm=args.clip, keep_prob=args.keep)
 
     # load data
-    data = sequence_modeling.sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
+    data = sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
     _x, _y = data["sentence"], data["label"]
 
     # train
     feeder = sequence_modeling.BatchFeeder(_x, _y, batch_size=args.batch, validation=0.05, process=pre_process)
     sequence_modeling.train(epoch=args.epoch, model=_model, feeder=feeder, save_path=path, model_inputs=model_inputs)
-
-
-
-
 

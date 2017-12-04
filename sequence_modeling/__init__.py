@@ -3,7 +3,7 @@
 # from .train_chunk_char_cnn import train_char_cnn
 # from . import vectorize
 
-from .sst import sst
+# from .sst import sst
 from . import model
 from .feeder import BatchFeeder
 from .train import train
