@@ -47,11 +47,11 @@ class BatchFeeder:
         _x0 = x[y == 0]
         _x1 = x[y == 1]
         _ind = int(np.min([np.min([len(_y0), len(_y1)]), size]))
-        self.y = np.hstack([_y0[:_ind], _y1[:_ind]])
-        self.x = np.hstack([_x0[:_ind], _x1[:_ind]])
-        __y = np.hstack([_y0[_ind:], _y1[_ind:]])
-        __x = np.hstack([_x0[_ind:], _x1[_ind:]])
-        self.x_valid, self.y_valid = randomize(__x, __y)
+        __y = np.hstack([_y0[:_ind], _y1[:_ind]])
+        __x = np.hstack([_x0[:_ind], _x1[:_ind]])
+        self.x, self.y = randomize(__x, __y)
+        self.y_valid = np.hstack([_y0[_ind:], _y1[_ind:]])
+        self.x_valid = np.hstack([_x0[_ind:], _x1[_ind:]])
 
     def next(self):
         """ next batch (size is `self.batch_size`) """
@@ -87,4 +87,5 @@ class BatchFeeder:
                 return self.process(_x), _y
         else:
             return _x, _y
+
 
