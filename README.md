@@ -25,15 +25,26 @@ to get `GoogleNews-vectors-negative300.bin.gz`.
 Also, you have to access [Stanford Sentiment Treebank](https://nlp.stanford.edu/sentiment/index.html)
 to get `stanfordSentimentTreebank.zip`. Finally, move them to `SequenceModeling/data/`
 and unzip those files. 
+Thus, the directory would be looks like
+```
+SequenceModeling/
+    ├ data/
+    : ├ __init__.py
+      ├ sst.py
+      ├ GoogleNews-vectors-negative300.bin
+      └ stanfordSentimentTreebank/
+``` 
+
 
 ### Train model
 In python
 ```python
 import sequence_modeling
 import gensim
+from data.sst import sst
   
 # load sst data
-data = sequence_modeling.sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
+data = sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
 _x, _y = data["sentence"], data["label"]
   
 # set network architecture
