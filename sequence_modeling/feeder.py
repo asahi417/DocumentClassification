@@ -78,7 +78,7 @@ class BatchFeeder:
         else:
             _x = self.x_valid[self._index_valid:self._index_valid + self.batch_size]
             _y = self.y_valid[self._index_valid:self._index_valid + self.batch_size]
-        self._index_valid += self.batch_size
+            self._index_valid += self.batch_size
 
         if self.process is not None:
             if type(self.process) == list:
