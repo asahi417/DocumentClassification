@@ -27,8 +27,9 @@ def train(epoch, model, feeder, model_inputs=None, save_path="./"):
         os.makedirs(save_path, exist_ok=True)
     logger = create_log("%s/log" % save_path)
     logger.info(model.__doc__)
-    logger.info("train: epoch (%i), iteration in an epoch (%i), batch size(%i)"
-                % (epoch, feeder.iterator_length, feeder.batch_size))
+    logger.info("train: epoch (%i), size (%i), iteration in an epoch (%i), batch size(%i)"
+                % (epoch, feeder.n, feeder.iterator_length, feeder.batch_size))
+    logger.info("validation: size (%i)" % feeder.n_valid)
     result = []
 
     # Initializing the tensor flow variables
