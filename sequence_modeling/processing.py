@@ -46,20 +46,22 @@ class Process:
             self.__char_dict = dict()
             for ind, c in enumerate(ascii_lowercase):
                 self.__char_dict[c] = ind + 1
+            self.__char_dict_l = len(self.__char_dict)
             self.__length_word = parameter["length_word"]
             self.__length_char = parameter["length_char"]
             self.__process = self.__onehot_char
         elif mode == "embed":
-            self.__model = parameter["model"]
+            self.__model = parameter["model"] if "model" in parameter.keys() else None
+            # self.__model = parameter["model"]
             self.__model_dim = parameter["dim"]
             self.__sentence_length = parameter["length_word"]
             self.__random_dict = dict()
             self.__process = self.__embed
-        elif mode == "random":
-            self.__dim = parameter["dim"]
-            self.__sentence_length = parameter["length_word"]
-            self.__random_dict = dict()
-            self.__process = self.__random
+        # elif mode == "random":
+        #     self.__dim = parameter["dim"]
+        #     self.__sentence_length = parameter["length_word"]
+        #     self.__random_dict = dict()
+        #     self.__process = self.__random
 
     def __call__(self, data):
         return self.__process(data)
@@ -78,10 +80,11 @@ class Process:
                     __vec = []
                     for ___d in __d:  # loop for char
                         __vec.append(self.__char_dict[___d])
-                    _oh = padding(np.vstack([np.zeros(26), np.eye(26)])[__vec], self.__length_char)
+                    _oh = padding(np.vstack([np.zeros(self.__char_dict_l),
+                                             np.eye(self.__char_dict_l)])[__vec], self.__length_char)
                     _vec.append(_oh)
             # if no word is contained in sentence, give zero vector with shape (1, word, char)
-            _vec = np.zeros((1, self.__length_word, self.__length_char)) if len(_vec) == 0 else np.array(_vec)
+            _vec = np.zeros((1, self.__length_char, self.__char_dict_l)) if len(_vec) == 0 else np.array(_vec)
             vector.append(padding(_vec, self.__length_word))
         return np.array(vector)
 
@@ -97,30 +100,37 @@ class Process:
             for __d in _d.split(' '):  # loop for word
                 __d = clean_word(__d)
                 if __d is not None:
-                    try:
-                        _vec.append(self.__model[__d])
-                    except KeyError:
+                    if self.__model is None:
+                        # full random embedding
                         if __d not in self.__random_dict.keys():
                             self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
                         _vec.append(self.__random_dict[__d])
+                    else:
+                        # partially random embedding
+                        try:
+                            _vec.append(self.__model[__d])
+                        except KeyError:
+                            if __d not in self.__random_dict.keys():
+                                self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
+                            _vec.append(self.__random_dict[__d])
             _vec = np.zeros((1, self.__model_dim)) if len(_vec) == 0 else np.array(_vec)
             vector.append(padding(_vec, self.__sentence_length))
         return np.array(vector)
 
-    def __random(self, data):
-        """ Random embedding, range in [-1, 1]
-        :param data: numpy array, [sentence, word]
-        :return:
-        """
-        vector = []
-        for ind, _d in enumerate(data):  # loop for sentence
-            _vec = []
-            for __d in _d.split(' '):  # loop for word
-                __d = clean_word(__d)
-                if __d is not None:
-                    if __d not in self.__random_dict.keys():
-                        self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
-                    _vec.append(self.__random_dict[__d])
-            _vec = np.zeros((1, self.__model_dim)) if len(_vec) == 0 else np.array(_vec)
-            vector.append(padding(_vec, self.__sentence_length))
-        return np.array(vector)
+    # def __random(self, data):
+    #     """ Random embedding, range in [-1, 1]
+    #     :param data: numpy array, [sentence, word]
+    #     :return:
+    #     """
+    #     vector = []
+    #     for ind, _d in enumerate(data):  # loop for sentence
+    #         _vec = []
+    #         for __d in _d.split(' '):  # loop for word
+    #             __d = clean_word(__d)
+    #             if __d is not None:
+    #                 if __d not in self.__random_dict.keys():
+    #                     self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
+    #                 _vec.append(self.__random_dict[__d])
+    #         _vec = np.zeros((1, self.__model_dim)) if len(_vec) == 0 else np.array(_vec)
+    #         vector.append(padding(_vec, self.__sentence_length))
+    #     return np.array(vector)
