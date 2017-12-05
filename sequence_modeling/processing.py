@@ -112,7 +112,7 @@ class Process:
                     if self.__model is None:
                         # full random embedding
                         if __d not in self.__random_dict.keys():
-                            self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
+                            self.__random_dict[__d] = list(np.random.rand(self.__model_dim) * 2 - 1)
                         _vec.append(self.__random_dict[__d])
                     else:
                         # partially random embedding
@@ -120,7 +120,7 @@ class Process:
                             _vec.append(self.__model[__d])
                         except KeyError:
                             if __d not in self.__random_dict.keys():
-                                self.__random_dict[__d] = np.random.rand(self.__model_dim) * 2 - 1
+                                self.__random_dict[__d] = list(np.random.rand(self.__model_dim) * 2 - 1)
                             _vec.append(self.__random_dict[__d])
             _vec = np.zeros((1, self.__model_dim)) if len(_vec) == 0 else np.array(_vec)
             vector.append(padding(_vec, self.__sentence_length))
