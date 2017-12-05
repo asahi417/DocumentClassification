@@ -65,6 +65,7 @@ def train(epoch, model, feeder, model_inputs=None, save_path="./"):
             np.savez("%s/progress-%i-acc.npz" % (save_path, _e), loss=np.array(result), clip=model.max_grad_norm,
                      learning_rate=model.learning_rate, epoch=epoch)
     model.saver.save(model.sess, "%s/model.ckpt" % save_path)
+    feeder.finalize()  # destructor of feeder
     np.savez("%s/statistics.npz" % save_path, loss=np.array(result), learning_rate=model.learning_rate, epoch=epoch,
              clip=model.max_grad_norm)
 
