@@ -9,12 +9,12 @@ from data.sst import sst
 def get_options(parser):
     parser.add_argument('model', action='store', nargs='?', const=None, default='char_cnn', type=str, choices=None,
                         metavar=None, help='Name of model to use. (default: char_cnn)')
-    parser.add_argument('-e', '--epoch', action='store', nargs='?', const=None, default=300, type=int,
-                        choices=None, help='Epoch number. (default: 300)', metavar=None)
+    parser.add_argument('-e', '--epoch', action='store', nargs='?', const=None, default=100, type=int,
+                        choices=None, help='Epoch number. (default: 100)', metavar=None)
     parser.add_argument('-b', '--batch', action='store', nargs='?', const=None, default=100, type=int,
                         choices=None, help='Batch size. (default: 100)', metavar=None)
-    parser.add_argument('-l', '--lr', action='store', nargs='?', const=None, default=0.00005, type=float,
-                        choices=None, help='Learning rate. (default: 0.00005)', metavar=None)
+    parser.add_argument('-l', '--lr', action='store', nargs='?', const=None, default=0.0001, type=float,
+                        choices=None, help='Learning rate. (default: 0.0001)', metavar=None)
     parser.add_argument('-c', '--clip', action='store', nargs='?', const=None, default=None, type=float,
                         choices=None, help='Gradient clipping. (default: None)', metavar=None)
     parser.add_argument('-k', '--keep', action='store', nargs='?', const=None, default=1, type=float,
