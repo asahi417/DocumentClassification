@@ -1,6 +1,8 @@
 import numpy as np
 import re
 from string import ascii_lowercase
+import json
+import os
 
 
 def padding(x, length):
@@ -36,12 +38,15 @@ class Process:
     p = Process(mode="onehot", parameter={"length_word": 40, "length_char": 33}
     p(data)
     """
+    __random_dict = dict()
+    __char_dict = dict()
 
     def __init__(self, mode, parameter):
         """
         :param mode: onehot, embed, random
         :param parameter:
         """
+        self.mode = mode
         if mode == "onehot":
             self.__char_dict = dict()
             for ind, c in enumerate(ascii_lowercase):
@@ -51,14 +56,24 @@ class Process:
             self.__length_char = parameter["length_char"]
             self.__process = self.__onehot_char
         elif mode == "embed":
+            self.__dict_save_path = parameter["path"] if "path" in parameter.keys() else "./random_dict.json"
             self.__model = parameter["model"] if "model" in parameter.keys() else None
             self.__model_dim = parameter["dim"]
             self.__sentence_length = parameter["length_word"]
             self.__random_dict = dict()
             self.__process = self.__embed
+            # if dictionary used in pre-trained
+            if os.path.exists(self.__dict_save_path):
+                with open(self.__dict_save_path, "r") as f:
+                    self.__random_dict = json.load(f)
 
     def __call__(self, data):
         return self.__process(data)
+
+    def finalize(self):
+        if len(self.__random_dict) != 0 and self.mode == "embed":
+            with open(self.__dict_save_path, "w") as f:
+                json.dump(self.__random_dict, f)
 
     def __onehot_char(self, data):
         """ Convert one hot vector for character

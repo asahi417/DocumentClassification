@@ -25,7 +25,8 @@ def get_options(parser):
 def get_model_instance(model_name, label_size=2):
     # set up pre processing
     w2v = gensim.models.KeyedVectors.load_word2vec_format("./data/GoogleNews-vectors-negative300.bin", binary=True)
-    _pre_process = sequence_modeling.Process("embed", {"length_word": 40, "dim": w2v.vector_size, "model": w2v})
+    _pre_process = sequence_modeling.Process("embed", {"length_word": 40, "dim": w2v.vector_size, "model": w2v,
+                                                       "path": "./data/random_dict.json"})
 
     def _model_inputs(model, x): return {model.x: np.expand_dims(x, 3)}
 
