@@ -40,18 +40,19 @@ class BatchFeeder:
         self.iterator_length = int(np.floor(len(self.y) / self.batch_size))
 
     def balanced_validation_split(self, x, y, ratio):
-        size = int(np.floor(len(x) * (1 - ratio)) / 2)
+        size = int(np.floor(len(x) * ratio) / 2)
         # binary label index
         _y0 = y[y == 0]
         _y1 = y[y == 1]
         _x0 = x[y == 0]
         _x1 = x[y == 1]
+        print(len(_y0), len(_y1), size)
         _ind = int(np.min([np.min([len(_y0), len(_y1)]), size]))
-        __y = np.hstack([_y0[:_ind], _y1[:_ind]])
-        __x = np.hstack([_x0[:_ind], _x1[:_ind]])
+        __y = np.hstack([_y0[_ind:], _y1[_ind:]])
+        __x = np.hstack([_x0[_ind:], _x1[_ind:]])
         self.x, self.y = randomize(__x, __y)
-        self.y_valid = np.hstack([_y0[_ind:], _y1[_ind:]])
-        self.x_valid = np.hstack([_x0[_ind:], _x1[_ind:]])
+        self.y_valid = np.hstack([_y0[:_ind], _y1[:_ind]])
+        self.x_valid = np.hstack([_x0[:_ind:], _x1[:_ind]])
 
     def next(self):
         """ next batch (size is `self.batch_size`) """
