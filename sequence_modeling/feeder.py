@@ -46,7 +46,6 @@ class BatchFeeder:
         _y1 = y[y == 1]
         _x0 = x[y == 0]
         _x1 = x[y == 1]
-        print(len(_y0), len(_y1), size)
         _ind = int(np.min([np.min([len(_y0), len(_y1)]), size]))
         __y = np.hstack([_y0[_ind:], _y1[_ind:]])
         __x = np.hstack([_x0[_ind:], _x1[_ind:]])
