@@ -52,9 +52,9 @@ class GapCNN(object):
 
         # Initializer
         if "relu" in self.activation.__name__:
-            self.ini_c, self.ini = variance_scaling_initializer(), variance_scaling_initializer()
+            self.ini_c, self.ini = variance_scaling_initializer(seed=0), variance_scaling_initializer(seed=0)
         else:
-            self.ini_c, self.ini = xavier_initializer_conv2d(), xavier_initializer()
+            self.ini_c, self.ini = xavier_initializer_conv2d(seed=0), xavier_initializer(seed=0)
 
         # Create network
         self._create_network()

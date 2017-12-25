@@ -1,5 +1,5 @@
 import unittest
-from sequence_modeling import BatchFeeder
+from tweet_classification import BatchFeeder
 import numpy as np
 
 

@@ -5,3 +5,4 @@ nltk
 pandas
 gensim
 scipy
+sklearn

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def sst(path="./stanfordSentimentTreebank", drop_neutral=True, cut_off=None, binary=False):
+def data_set(path="./data/stanfordSentimentTreebank", drop_neutral=True, cut_off=3, binary=True):
     """
 
     :param str path: path to the `stanfordSentimentTreebank`

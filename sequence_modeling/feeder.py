@@ -1,9 +1,10 @@
 import numpy as np
 
 
-def randomize(x, y=None):
+def randomize(x, y=None, seed=0):
     """ Randomize numpy array."""
     index = [i for i in range(len(x))]
+    np.random.seed(seed)
     np.random.shuffle(index)
     if y is not None:
         return x[index], y[index]
@@ -18,7 +19,7 @@ class BatchFeeder:
     n_valid, iterator_length_valid = 0, 0  # number of validation data, iterate number for each batch
     y_valid, x_valid = None, None
 
-    def __init__(self, inputs, outputs, batch_size, validation=0.2, process=None, fix_validation=True):
+    def __init__(self, inputs, outputs, batch_size, validation=None, process=None, fix_validation=False):
         """
         :param outputs: outputs data, first dimension is iterator
         :param inputs: input data, first dimension is iterator (should be 1 dimension array)
@@ -30,7 +31,7 @@ class BatchFeeder:
         self.batch_size = batch_size
         self.process = process
         # if validation, split chunk into validation and training, get validation chunk
-        if validation:
+        if validation is not None:
             if not fix_validation:
                 inputs, outputs = randomize(inputs, outputs)
             self.balanced_validation_split(inputs, outputs, validation)
@@ -61,10 +62,10 @@ class BatchFeeder:
         self.y_valid = np.hstack([_y0[:_ind], _y1[:_ind]])
         __y = np.hstack([_y0[_ind:], _y1[_ind:]])
         if x.ndim == 1:
-            self.x_valid = np.hstack([_x0[:_ind:], _x1[:_ind]])
+            self.x_valid = np.hstack([_x0[:_ind], _x1[:_ind]])
             __x = np.hstack([_x0[_ind:], _x1[_ind:]])
         else:
-            self.x_valid = np.vstack([_x0[:_ind:], _x1[:_ind]])
+            self.x_valid = np.vstack([_x0[:_ind], _x1[:_ind]])
             __x = np.vstack([_x0[_ind:], _x1[_ind:]])
         self.x, self.y = randomize(__x, __y)
 

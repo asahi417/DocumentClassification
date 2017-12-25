@@ -4,10 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def model_inputs_default(model, x): return {model.x: x}
-
-
-def train(epoch, model, feeder, model_inputs=None, save_path="./"):
+def train(epoch, model, feeder, model_inputs, save_path="./"):
     """ Train model based on mini-batch of input data.
 
     :param model: model instance
@@ -21,7 +18,6 @@ def train(epoch, model, feeder, model_inputs=None, save_path="./"):
         By default, def model_inputs(model, x): return {model.x: x}
     """
 
-    model_inputs = model_inputs_default if model_inputs is None else model_inputs
     # logger
     if not os.path.exists(save_path):
         os.makedirs(save_path, exist_ok=True)
@@ -43,6 +39,8 @@ def train(epoch, model, feeder, model_inputs=None, save_path="./"):
             feed_dict = model_inputs(model, _x)
             feed_dict[model.y] = _y
             feed_dict[model.is_training] = True
+            if model.lr_schedule is not None:
+                feed_dict[model.lr_index] = np.ceil(_e / 100) - 1  # every 100 epoch, (decay)**lr_index
             loss, acc, _ = model.sess.run([model.loss, model.accuracy, model.train], feed_dict=feed_dict)
             _result.append([loss, acc])
 
