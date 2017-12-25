@@ -1,6 +1,9 @@
 from .lstm import LSTM
-from .gap_cnn import GapCNN
-from .char_cnn import CharCNN
+from .lstm_char import CharLSTM
+from .cnn_gap import GapCNN
+from .cnn_char import CharCNN
+
+import numpy as np
 
 
 class InputFormat:
