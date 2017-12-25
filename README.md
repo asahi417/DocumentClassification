@@ -17,7 +17,6 @@ git clone https://github.com/asahi417/SequenceModeling
 cd SequenceModeling
 pip install -r requirements.txt
 python setup.py test
-mkdir data
 ```
 
 Then, you need to install [pretrained word2vector by Google news](https://drive.google.com/uc?id=0B7XkCwpI5KDYNlNUTTlSS21pQmM&export=download)
@@ -41,10 +40,10 @@ In python
 ```python
 import sequence_modeling
 import gensim
-from data.sst import sst
+from data.util import data_set
   
 # load sst data
-data = sst("./data/stanfordSentimentTreebank", binary=True, cut_off=2)
+data = data_set()
 _x, _y = data["sentence"], data["label"]
   
 # set network architecture
@@ -79,8 +78,21 @@ then you will get following log.
   <br><i> training progress log</i>
 </p>
 
+## Models
+Currently following models are available:
+- LSTM word model
+    - bi LSTM x 3 -> hidden unit of last bi LSTM -> FC -> output
+- Gap CNN [2]
+- char CNN [3]
+
+### Base line check
+To see how efficient the model is, you can see the base line accuracy by SVM and logistic regression.
+```
+>>> python bench_mark_accuracy.py 
+```
+
 
 ### References
-- Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
-- Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
-- Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.
+- [1] Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
+- [2] Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
+- [3] Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.
