@@ -10,8 +10,7 @@ def get_model_instance(model_name, embedding_model, label_size=2, n_word=40, n_c
                                      "model": embedding_model, "path": "./data/random_dict.json"})
     if model_name == "cnn_char":
         _model = model.CharCNN
-        _pre_process = [Process("onehot", {"length_word": n_word, "length_char": n_char}),
-                        _pre_process]
+        _pre_process = [Process("onehot", {"length_word": n_word, "length_char": n_char}), _pre_process]
         _net = {"input_char": [n_word, n_char, _pre_process[0].char_dict_size],
                 "input_word": [n_word, embedding_model.vector_size],
                 "char_embed_dim": 5, "char_cnn_unit": 10, "char_cnn_kernel": 3, "word_embed_dim": 30,
@@ -27,6 +26,7 @@ def get_model_instance(model_name, embedding_model, label_size=2, n_word=40, n_c
         _model = model.LSTM
         _model_inputs = model.InputFormat.basic
     elif model_name == "lstm_char":
+        _pre_process = [Process("onehot", {"length_word": n_word, "length_char": n_char}), _pre_process]
         _net = {"input_char": [n_word, n_char, _pre_process[0].char_dict_size],
                 "input_word": [n_word, embedding_model.vector_size],
                 "label_size": label_size, "n_hidden_1": 64, "n_hidden_2": 128, "n_hidden_3": 256}

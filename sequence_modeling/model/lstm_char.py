@@ -65,9 +65,12 @@ def embedding_char(x, embed_dim_c=5, embed_dim_w=10, wk=5, batch_norm=False):
 
 
 class CharLSTM(object):
-    """ LSTM classifier
+    """ LSTM classifier with character level feature
         * recurrent dropout and layer norm for LSTM
         * batch norm for full connect
+    - inputs:
+        - onehot char vector (max word num in sentence, max char num in word, character size)
+        - embedded vector of word (max word num in sentence, embedded dimension)
     - input -> bi LSTM x 3 -> last hidden unit -> FC -> output
     - output: one hot vector of label (multi class, 2 dim), 0 or 1 (binary class, 1 dim)
     """
@@ -156,7 +159,6 @@ class CharLSTM(object):
 
         cell = tf.concat([cell_word, cell_char], axis=1)
         _shape = cell.shape.as_list()
-        print(_shape)
 
         # Prediction, Loss and Accuracy
         if self.binary_class:
