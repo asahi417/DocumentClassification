@@ -8,6 +8,23 @@ Here, neutral evaluation is removed.
 
 - This code is supported python 3 and tensorflow 1.3.0.
 
+## Models
+Currently following models are available:
+- [`Gap CNN`](sequence_modeling/model/cnn_gap.py)
+    - [1] Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
+    - [2] Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
+- [`CNN with character level feature`](sequence_modeling/model/cnn_char.py)
+    - [3] Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.
+- [`LSTM`](sequence_modeling/model/lstm.py): bi LSTM x 3 -> hidden unit of last bi LSTM -> Full connect -> output
+- [`LSTM with character level feature`](sequence_modeling/model/lstm_char.py)
+    - word: bi LSTM x 3 -> hidden unit of last bi LSTM -> word feature
+    - word: bi LSTM x 3 -> hidden unit of last bi LSTM -> character feature
+        - Here, character level feature model is similar with [3]
+    - concatenate(word feature, character feature) -> Full connect -> output  
+ 
+Dropout (recurrent dropout for LSTM) and batch normalization have been implemented in all models.
+
+
 ## How to use.
 ### Setup
 First, clone the repository and run setup.
@@ -78,12 +95,6 @@ then you will get following log.
   <br><i> training progress log</i>
 </p>
 
-## Models
-Currently following models are available:
-- LSTM word model
-    - bi LSTM x 3 -> hidden unit of last bi LSTM -> FC -> output
-- Gap CNN [2]
-- char CNN [3]
 
 ### Base line check
 To see how efficient the model is, you can see the base line accuracy by SVM and logistic regression.
@@ -92,7 +103,3 @@ To see how efficient the model is, you can see the base line accuracy by SVM and
 ```
 
 
-### References
-- [1] Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
-- [2] Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
-- [3] Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.
