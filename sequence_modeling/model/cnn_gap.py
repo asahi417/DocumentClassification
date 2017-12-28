@@ -3,22 +3,44 @@ from tensorflow.contrib.layers import xavier_initializer_conv2d, variance_scalin
 import tensorflow.contrib.slim as slim
 
 
-def convolution(x, weight_shape, stride, initializer, padding="SAME"):
+def convolution(x, weight_shape, stride, padding="SAME", bias=True, batch_norm=False,
+                initializer=xavier_initializer_conv2d(seed=0)):
     """ 2d convolution layer
     - weight_shape: width, height, input channel, output channel
+    - stride: batch, w, h, c
     """
     weight = tf.Variable(initializer(shape=weight_shape))
-    bias = tf.Variable(tf.zeros([weight_shape[-1]]), dtype=tf.float32)
-    return tf.add(tf.nn.conv2d(x, weight, strides=[1, stride[0], stride[1], 1], padding=padding), bias)
+    x = tf.nn.conv2d(x, weight, strides=stride, padding=padding)
+    if batch_norm:
+        return batch_normalization(x)
+    elif bias:
+        return tf.add(x, tf.Variable(tf.zeros([weight_shape[-1]]), dtype=tf.float32))
+    else:
+        return x
 
 
-def full_connected(x, weight_shape, initializer):
+def full_connected(x, weight_shape, initializer=xavier_initializer(seed=0), bias=True, batch_norm=False):
     """ fully connected layer
     - weight_shape: input size, output size
+    - priority: batch norm (remove bias) > dropout and bias term
     """
     weight = tf.Variable(initializer(shape=weight_shape))
-    bias = tf.Variable(tf.zeros([weight_shape[-1]]), dtype=tf.float32)
-    return tf.add(tf.matmul(x, weight), bias)
+    x = tf.matmul(x, weight)
+    if batch_norm:
+        return batch_normalization(x)
+    else:
+        if bias:
+            return tf.add(x, tf.Variable(tf.zeros([weight_shape[-1]]), dtype=tf.float32))
+        else:
+            return x
+
+
+def batch_normalization(x, epsilon=1e-4):
+    batch_size = x.shape.as_list()[0]
+    batch_mean, batch_var = tf.nn.moments(x, [0])  # return mu and var for the batch axis
+    scale = tf.Variable(tf.ones([batch_size]))
+    beta = tf.Variable(tf.zeros([batch_size]))
+    return tf.nn.batch_normalization(x, batch_mean, batch_var, beta, scale, epsilon)
 
 
 class GapCNN(object):
@@ -32,7 +54,7 @@ class GapCNN(object):
     """
 
     def __init__(self, network_architecture, activation=tf.nn.relu, learning_rate=0.001,
-                 load_model=None, max_grad_norm=None, keep_prob=0.9):
+                 load_model=None, max_grad_norm=None, keep_prob=1.0, batch_norm=False, lr_schedule=None):
         """
         :param dict network_architecture: dictionary with following elements
             n_input: shape of input (list: sequence, feature, channel)
@@ -40,8 +62,11 @@ class GapCNN(object):
             batch_size: size of mini-batch
         :param activation: activation function (tensor flow function)
         :param float learning_rate:
-        :param str save_path: path to save
-        :param str load_model: load saved model
+        :param float keep_prob: (option) keep rate for dropout for last FC.
+        :param bool batch_norm: (option) if True, apply BN for training
+        :param float max_grad_norm: (option) clipping gradient value
+        :param str load_model: (option) load saved model
+        :param float lr_schedule: (option) decay rate
         """
         self.network_architecture = network_architecture
         self.binary_class = True if self.network_architecture["label_size"] == 2 else False
@@ -49,6 +74,8 @@ class GapCNN(object):
         self.learning_rate = learning_rate
         self.max_grad_norm = max_grad_norm
         self.keep_prob = keep_prob
+        self.batch_norm = batch_norm
+        self.lr_schedule = lr_schedule
 
         # Initializer
         if "relu" in self.activation.__name__:
@@ -58,7 +85,6 @@ class GapCNN(object):
 
         # Create network
         self._create_network()
-
         # Summary
         tf.summary.scalar("loss", self.loss)
         tf.summary.scalar("accuracy", self.accuracy)
@@ -79,14 +105,16 @@ class GapCNN(object):
             self.y = tf.placeholder(tf.float32, [None], name="output")
         else:
             self.y = tf.placeholder(tf.float32, [None, self.network_architecture["label_size"]], name="output")
+
         self.is_training = tf.placeholder(tf.bool)
-        _keep_prob = self.keep_prob if self.is_training is True else 1
+        _keep_prob = self.keep_prob if self.is_training is True else 1.0
+        _batch_norm = self.batch_norm if self.is_training is True else False
 
         # CNN over feature
         # -print(self.x.shape)
         _kernel = [12, self.network_architecture["n_input"][1], 1, 16]
         _stride = [2, self.network_architecture["n_input"][1]]
-        _layer = convolution(self.x, _kernel, _stride, self.ini_c)
+        _layer = convolution(self.x, _kernel, _stride, self.ini_c, batch_norm=_batch_norm)
         _layer = self.activation(_layer)
         _layer = tf.nn.dropout(_layer, _keep_prob)
 
@@ -102,7 +130,7 @@ class GapCNN(object):
         _shape = _layer.shape.as_list()
         if self.binary_class:
             # last layer to get logit and prediction
-            _logit = tf.squeeze(full_connected(_layer, [_shape[-1], 1], self.ini))
+            _logit = tf.squeeze(full_connected(_layer, [_shape[-1], 1], self.ini, batch_norm=_batch_norm))
             self.prediction = tf.sigmoid(_logit)
             # logistic loss
             _loss = self.y * tf.log(self.prediction + 1e-8) + (1 - self.y) * tf.log(1 - self.prediction + 1e-8)
@@ -113,7 +141,8 @@ class GapCNN(object):
         else:
             # last layer to get logit
             # _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
-            _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini)
+            _logit = full_connected(_layer, [_shape[-1], self.network_architecture["label_size"]], self.ini,
+                                    batch_norm=_batch_norm)
             self.prediction = tf.nn.softmax(_logit)
             # cross entropy
             self.loss = - tf.reduce_sum(self.y * tf.log(self.prediction + 1e-8))
