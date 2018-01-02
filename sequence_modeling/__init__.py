@@ -1,10 +1,22 @@
 from . import model
 from .feeder import BatchFeeder
-from .train import train
 from .processing import Process
 
 
-def get_model_instance(model_name, embedding_model, label_size=2, n_word=40, n_char=33):
+def get_model_instance(model_name, embedding_model, learning_rate, gradient_clip=None,
+                       label_size=2, n_word=40, n_char=33):
+    """
+    Get model instance, preprocessing, and input format
+
+    :param model_name:
+    :param embedding_model:
+    :param learning_rate:
+    :param gradient_clip:
+    :param label_size:
+    :param n_word:
+    :param n_char:
+    :return:
+    """
     # set up pre processing
     _pre_process = Process("embed", {"length_word": n_word, "dim": embedding_model.vector_size,
                                      "model": embedding_model, "path": "./data/random_dict.json"})
@@ -34,4 +46,8 @@ def get_model_instance(model_name, embedding_model, label_size=2, n_word=40, n_c
         _model_inputs = model.InputFormat.char_word
     else:
         raise ValueError("unknown model!")
-    return _model, _net, _pre_process, _model_inputs
+    if gradient_clip is None:
+        model_instance = _model(network_architecture=_net, learning_rate=learning_rate)
+    else:
+        model_instance = _model(network_architecture=_net, learning_rate=learning_rate, max_grad_norm=gradient_clip)
+    return {"model": model_instance, "processing": _pre_process, "input_format": _model_inputs}
