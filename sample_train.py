@@ -1,25 +1,25 @@
 import os
 import logging
 import argparse
+import tensorflow as tf
+import numpy as np
 import sequence_modeling
 import gensim
 from data.util import data_set
 
 
-def train(epoch, model, feeder, model_inputs, save_path="./", batch_norm=False, keep_prob=1.0, lr_decay=1.0):
+def train(epoch, model, feeder, input_format, save_path="./", lr_decay=1.0):
     """ Train model based on mini-batch of input data.
 
     :param model: model instance
     :param str save_path: Path to save
     :param int epoch:
     :param feeder: Feeding data.
-    :param model_inputs: (optional) Input data format for `model`. For instance
-            def model_inputs(model, x):
+    :param input_format: (optional) Input data format for `model`. For instance
+            def input_format(model, x):
                 return {model.x_char: x[0], model.x_word: x[1]}
         This example is used when char and word vector is fed through the `feeder`. This function has to return dict.
-        By default, def model_inputs(model, x): return {model.x: x}
-    :param bool batch_norm: "True" to use batch norm
-    :param float keep_prob: dropout keep prob
+        By default, def input_format(model, x): return {model.x: x}
     :param float lr_decay: learning rate will be divided by lr_decay each epoch
     """
 
@@ -41,23 +41,18 @@ def train(epoch, model, feeder, model_inputs, save_path="./", batch_norm=False, 
         _result = []
         for _b in range(feeder.iterator_length):  # Train
             _x, _y = feeder.next()
-            feed_dict = model_inputs(model, _x)
+            feed_dict = input_format(model, _x)
             feed_dict[model.y] = _y
-            if batch_norm:
-                feed_dict[model.batch_norm] = batch_norm
-            if keep_prob != 1.0:
-                feed_dict[model.keep_prob] = keep_prob
+            feed_dict[model.is_train] = True
             if lr_decay != 1.0:
-                feed_dict[model.lr_decay] = lr_decay
-            if model.lr_schedule is not None:
-                feed_dict[model.lr_index] = np.ceil(_e / 100) - 1  # every 100 epoch, (decay)**lr_index
+                feed_dict[model.lr_decay] = lr_decay ** (np.ceil(_e / 100) - 1)  # every 100 epoch, (decay) ** lr_index
             loss, acc, _ = model.sess.run([model.loss, model.accuracy, model.train], feed_dict=feed_dict)
             _result.append([loss, acc])
 
         _result_valid = []
         for _b in range(feeder.iterator_length_valid):  # Test
             _x, _y = feeder.next_valid()
-            feed_dict = model_inputs(model, _x)
+            feed_dict = input_format(model, _x)
             feed_dict[model.y] = _y
             summary, loss, acc = model.sess.run([model.summary, model.loss, model.accuracy], feed_dict=feed_dict)
             _result_valid.append([loss, acc])
@@ -69,12 +64,10 @@ def train(epoch, model, feeder, model_inputs, save_path="./", batch_norm=False, 
         result.append(_result_full)
         if _e % 50 == 0:
             model.saver.save(model.sess, "%s/progress-%i-model.ckpt" % (save_path, _e))
-            np.savez("%s/progress-%i-acc.npz" % (save_path, _e), loss=np.array(result), clip=model.max_grad_norm,
-                     learning_rate=model.learning_rate, epoch=epoch)
+            np.savez("%s/progress-%i-acc.npz" % (save_path, _e), loss=np.array(result))
     model.saver.save(model.sess, "%s/model.ckpt" % save_path)
     feeder.finalize()  # destructor of feeder
-    np.savez("%s/statistics.npz" % save_path, loss=np.array(result), learning_rate=model.learning_rate, epoch=epoch,
-             clip=model.max_grad_norm)
+    np.savez("%s/statistics.npz" % save_path, loss=np.array(result))
 
 
 def create_log(name):
@@ -95,22 +88,23 @@ def create_log(name):
 
 
 def get_options(parser):
-    parser.add_argument('model', action='store', nargs='?', const=None, default='char_cnn', type=str, choices=None,
-                        metavar=None, help='Name of model to use. (default: char_cnn)')
-    parser.add_argument('-e', '--epoch', action='store', nargs='?', const=None, default=100, type=int,
-                        choices=None, help='Epoch number. (default: 100)', metavar=None)
-    parser.add_argument('-b', '--batch', action='store', nargs='?', const=None, default=100, type=int,
-                        choices=None, help='Batch size. (default: 100)', metavar=None)
-    parser.add_argument('-l', '--lr', action='store', nargs='?', const=None, default=0.0001, type=float,
-                        choices=None, help='Learning rate. (default: 0.0001)', metavar=None)
-    parser.add_argument('-c', '--clip', action='store', nargs='?', const=None, default=None, type=float,
-                        choices=None, help='Gradient clipping. (default: None)', metavar=None)
-    parser.add_argument('-k', '--keep', action='store', nargs='?', const=None, default=1.0, type=float,
-                        choices=None, help='Keep rate for Dropout. (default: 1)', metavar=None)
-    parser.add_argument('-n', '--norm', action='store', nargs='?', const=None, default=False, type=bool,
-                        choices=None, help='Batch normalization (default: False)', metavar=None)
-    parser.add_argument('-d', '--decay_learning_rate', action='store', nargs='?', const=None, default=None, type=float,
-                        choices=None, help='Decay learning rate (default: None)', metavar=None)
+    share_param = {'nargs': '?', 'action': 'store', 'const': None, 'choices': None, 'metavar': None}
+    parser.add_argument('model', help='Name of model to use. (default: cnn_char)',
+                        default='cnn_char', type=str, **share_param)
+    parser.add_argument('-e', '--epoch', help='Epoch number. (default: 500)',
+                        default=500, type=int, **share_param)
+    parser.add_argument('-b', '--batch', help='Batch size. (default: 100)',
+                        default=100, type=int, **share_param)
+    parser.add_argument('-l', '--lr', help='Learning rate. (default: 0.0001)',
+                        default=0.0001, type=float, **share_param)
+    parser.add_argument('-c', '--clip', help='Gradient clipping. (default: None)',
+                        default=None, type=float, **share_param)
+    parser.add_argument('-k', '--keep', help='Keep rate for Dropout. (default: 1.0)',
+                        default=1.0, type=float, **share_param)
+    parser.add_argument('-n', '--norm', help='Decay for batch normalization. if batch is 100, 0.95 (default: None)',
+                        default=None, type=float, **share_param)
+    parser.add_argument('-d', '--decay_lr', help='Decay index for learning rate (default: 1.0)',
+                        default=1.0, type=float, **share_param)
     return parser.parse_args()
 
 
@@ -120,15 +114,16 @@ if __name__ == '__main__':
     _parser = argparse.ArgumentParser(description='This script is ...', formatter_class=argparse.RawTextHelpFormatter)
     args = get_options(_parser)
 
+    # save path
     path = "./log/%s/l%0.6f_e%i_b%i" % (args.model, args.lr, args.epoch, args.batch)
-    if args.clip:
+    if args.decay_lr != 1.0:  # learning rate decaying
+        path += "_d%0.2f" % args.decay_lr
+    if args.clip is not None:  # gradient clipping
         path += "_c%0.2f" % args.clip
-    if args.keep != 1.0:
+    if args.norm is not None:  # batch normalization
+        path += "_n%0.3f" % args.norm
+    if args.keep != 1.0:  # dropout
         path += "_k%0.2f" % args.keep
-    if args.norm:
-        path += "_norm"
-    if args.decay_learning_rate is not None:
-        path += "_d%0.2f" % args.decay_learning_rate
 
     # word2vec
     embedding_model = \
@@ -136,17 +131,17 @@ if __name__ == '__main__':
 
     # load data
     data = data_set()
-    _x, _y = data["sentence"], data["label"]
 
     # load model
-    model_information = sequence_modeling.get_model_instance(args.model, embedding_model, args.lr, args.clip)
+    model_instance = sequence_modeling.get_model_instance(model_name=args.model,
+                                                          embedding_model=embedding_model,
+                                                          learning_rate=args.lr,
+                                                          gradient_clip=args.clip,
+                                                          batch_norm=args.norm,
+                                                          keep_prob=args.keep)
+
     # train
-    data_feeder = sequence_modeling.BatchFeeder(_x, _y, batch_size=args.batch, validation=0.05,
-                                                process=model_information["processing"])
-    train(model=model_information["model_instance"], model_inputs=model_information["input_format"],
-          epoch=args.epoch, feeder=data_feeder, save_path=path)
-
-
-
-
-
+    data_feeder = sequence_modeling.BatchFeeder(data["sentence"], data["label"], batch_size=args.batch,
+                                                validation=0.05, process=model_instance["processing"])
+    train(model=model_instance["model"], input_format=model_instance["input_format"],
+          epoch=args.epoch, feeder=data_feeder, save_path=path, lr_decay=args.decay_lr)
