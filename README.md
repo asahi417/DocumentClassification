@@ -12,17 +12,21 @@ Here, neutral evaluation is removed.
 Currently following models are available:
 - [`Gap CNN`](sequence_modeling/model/cnn_gap.py)
     - [1] Kim, Yoon. "Convolutional neural networks for sentence classification." arXiv preprint arXiv:1408.5882 (2014).
-    - [2] Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
 - [`CNN with character level feature`](sequence_modeling/model/cnn_char.py)
-    - [3] Socher, Richard, et al. "Recursive deep models for semantic compositionality over a sentiment treebank." Proceedings of the 2013 conference on empirical methods in natural language processing. 2013.
-- [`LSTM`](sequence_modeling/model/lstm.py): bi LSTM x 3 -> hidden unit of last bi LSTM -> Full connect -> output
+    - [2] Dos Santos, Cícero Nogueira, and Maira Gatti. "Deep Convolutional Neural Networks for Sentiment Analysis of Short Texts." COLING. 2014.
+- [`LSTM`](sequence_modeling/model/lstm.py):
+    - bi LSTM x 3 -> hidden unit of last bi LSTM -> Full connect -> output (good, bad)
 - [`LSTM with character level feature`](sequence_modeling/model/lstm_char.py)
-    - word: bi LSTM x 3 -> hidden unit of last bi LSTM -> word feature
-    - word: bi LSTM x 3 -> hidden unit of last bi LSTM -> character feature
-        - Here, character level feature model is similar with [3]
-    - concatenate(word feature, character feature) -> Full connect -> output  
+    - concatenate(word feature, character feature) -> Full connect -> output (good, bad)
+    - word feature:  
+    word -> embed -> bi LSTM x 3 -> hidden unit of last bi LSTM -> feature  
+    - character feature:  
+    word -> *character embedding* (same as [2]) -> bi LSTM x 3 -> hidden unit of last bi LSTM -> feature   
  
-Dropout (recurrent dropout for LSTM) and batch normalization have been implemented in all models.
+Dropout (recurrent dropout for LSTM) and batch normalization for CNN and fully connected layer have been implemented in all models.
+
+Todo:
+* Layer normalization: when I use [`LayerNormBasicLSTMCell`](https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/LayerNormBasicLSTMCell) with layer_norm, accuracies becomes NaN and it have not solved yet.
 
 
 ## How to use.
@@ -53,41 +57,9 @@ SequenceModeling/
 
 
 ### Train model
-In python
-```python
-import sequence_modeling
-import gensim
-from data.util import data_set
-  
-# load sst data
-data = data_set()
-_x, _y = data["sentence"], data["label"]
-  
-# set network architecture
-net = {"label_size": 2, "input_char": [40, 33, 26], "input_word": [40, 300],
-       "char_embed_dim": 5, "char_cnn_unit": 10, "char_cnn_kernel": 3, "word_embed_dim": 30,
-       "cnn_unit": 300, "cnn_kernel": 5, "hidden_unit": 300}
-  
-# get model instance (here, character-level CNN is used)
-_model = sequence_modeling.model.CharCNN
-  
-# set preprocessing functions for data
-w2v = gensim.models.KeyedVectors.load_word2vec_format("./data/GoogleNews-vectors-negative300.bin", binary=True)
-pre_process = [sequence_modeling.Process("onehot", {"length_word": 40, "length_char": 33}), 
-                   sequence_modeling.Process("embed", {"length_word": 40, "dim": w2v.vector_size, "model": w2v})]
-  
-# define model inputs format 
-def model_inputs(model, x):
-    return {model.x_char: x[0], model.x_word: x[1]}
-  
-# train
-feeder = sequence_modeling.BatchFeeder(_x, _y, batch_size=100, validation=0.2, process=pre_process)
-sequence_modeling.train(epoch=150, model=_model, feeder=feeder, save_path="./", model_inputs=model_inputs)
+You can use sample script by 
 ```
-
-or you can use sample script by 
-```
-python sample_train.py char_cnn -e 300 -b 100 -l 0.0001
+python sample_train.py cnn_char -e 100
 ```
 then you will get following log.
 <p align="center">

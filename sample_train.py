@@ -8,7 +8,7 @@ import gensim
 from data.util import data_set
 
 
-def train(epoch, model, feeder, input_format, save_path="./", lr_decay=1.0):
+def train(epoch, model, feeder, input_format, save_path="./", lr_decay=1.0, test=False):
     """ Train model based on mini-batch of input data.
 
     :param model: model instance
@@ -48,6 +48,8 @@ def train(epoch, model, feeder, input_format, save_path="./", lr_decay=1.0):
                 feed_dict[model.lr_decay] = lr_decay ** (np.ceil(_e / 100) - 1)  # every 100 epoch, (decay) ** lr_index
             loss, acc, _ = model.sess.run([model.loss, model.accuracy, model.train], feed_dict=feed_dict)
             _result.append([loss, acc])
+            if test:
+                logger.info("iter %i: acc %0.3f, loss %0.3f" % (_b, loss, acc))
 
         _result_valid = []
         for _b in range(feeder.iterator_length_valid):  # Test
@@ -144,4 +146,5 @@ if __name__ == '__main__':
     data_feeder = sequence_modeling.BatchFeeder(data["sentence"], data["label"], batch_size=args.batch,
                                                 validation=0.05, process=model_instance["processing"])
     train(model=model_instance["model"], input_format=model_instance["input_format"],
-          epoch=args.epoch, feeder=data_feeder, save_path=path, lr_decay=args.decay_lr)
+          epoch=args.epoch, feeder=data_feeder, save_path=path, lr_decay=args.decay_lr,
+          test=False)
