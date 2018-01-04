@@ -86,16 +86,20 @@ class CharLSTM(object):
         # Regularization
         self.is_train = tf.placeholder_with_default(False, [])
         _keep_prob = tf.where(self.is_train, self.keep_prob, 1.0)
-        _layer_norm = self.batch_norm is not None
+        # _layer_norm = self.batch_norm is not None
+        _layer_norm = False  # layer norm makes the accuracy -> NaN. Still not be solved problem...
 
         with tf.variable_scope("word_level"):
             cell_bw, cell_fw = [], []
             for i in range(1, 4):
+                # tf.nn.rnn_cell.BasicLSTMCell()
                 _cell = tf.contrib.rnn.LayerNormBasicLSTMCell(num_units=self.network_architecture["n_hidden_%i" % i],
-                                                              dropout_keep_prob=_keep_prob, layer_norm=_layer_norm)
+                                                              dropout_keep_prob=_keep_prob,
+                                                              layer_norm=_layer_norm)
                 cell_fw.append(_cell)
                 _cell = tf.contrib.rnn.LayerNormBasicLSTMCell(num_units=self.network_architecture["n_hidden_%i" % i],
-                                                              dropout_keep_prob=_keep_prob, layer_norm=_layer_norm)
+                                                              dropout_keep_prob=_keep_prob,
+                                                              layer_norm=_layer_norm)
                 cell_bw.append(_cell)
             cell_bw, cell_fw = tf.contrib.rnn.MultiRNNCell(cell_bw), tf.contrib.rnn.MultiRNNCell(cell_fw)
 
@@ -108,10 +112,12 @@ class CharLSTM(object):
             cell_bw, cell_fw = [], []
             for i in range(1, 4):
                 _cell = tf.contrib.rnn.LayerNormBasicLSTMCell(num_units=self.network_architecture["n_hidden_%i" % i],
-                                                              dropout_keep_prob=_keep_prob, layer_norm=_layer_norm)
+                                                              dropout_keep_prob=_keep_prob,
+                                                              layer_norm=_layer_norm)
                 cell_fw.append(_cell)
                 _cell = tf.contrib.rnn.LayerNormBasicLSTMCell(num_units=self.network_architecture["n_hidden_%i" % i],
-                                                              dropout_keep_prob=_keep_prob, layer_norm=_layer_norm)
+                                                              dropout_keep_prob=_keep_prob,
+                                                              layer_norm=_layer_norm)
                 cell_bw.append(_cell)
             cell_bw, cell_fw = tf.contrib.rnn.MultiRNNCell(cell_bw), tf.contrib.rnn.MultiRNNCell(cell_fw)
 
@@ -136,7 +142,8 @@ class CharLSTM(object):
             _layer = full_connected(_layer, _weight)
 
             if self.batch_norm is not None:
-                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                      updates_collections=None)
 
             self.prediction = tf.sigmoid(tf.squeeze(_layer, axis=1))
             # logistic loss
@@ -152,7 +159,8 @@ class CharLSTM(object):
             _layer = full_connected(_layer, _weight)
 
             if self.batch_norm is not None:
-                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                      updates_collections=None)
 
             self.prediction = tf.nn.softmax(_layer)
             # cross entropy
@@ -162,17 +170,14 @@ class CharLSTM(object):
             self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         # Define optimizer and learning rate: lr = lr/lr_decay
-        # need for BN -> https://www.tensorflow.org/versions/r1.1/api_docs/python/tf/contrib/layers/batch_norm
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            self.lr_decay = tf.placeholder_with_default(1.0, [])
-            optimizer = tf.train.AdamOptimizer(self.learning_rate / self.lr_decay)
-            if self.gradient_clip is not None:
-                _var = tf.trainable_variables()
-                grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, _var), self.gradient_clip)
-                self.train = optimizer.apply_gradients(zip(grads, _var))
-            else:
-                self.train = optimizer.minimize(self.loss)
+        self.lr_decay = tf.placeholder_with_default(1.0, [])
+        optimizer = tf.train.AdamOptimizer(self.learning_rate / self.lr_decay)
+        if self.gradient_clip is not None:
+            _var = tf.trainable_variables()
+            grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, _var), self.gradient_clip)
+            self.train = optimizer.apply_gradients(zip(grads, _var))
+        else:
+            self.train = optimizer.minimize(self.loss)
 
         # saver
         self.saver = tf.train.Saver()
@@ -190,12 +195,14 @@ class CharLSTM(object):
         # character level embedding (word size x character size x embed_dim_c)
         embedding = convolution(x, [1, 1, __shape[3], embed_dim_c], [1, 1, 1, 1], bias=False, padding='VALID')
         if self.batch_norm is not None:
-            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train)
+            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train,
+                                                     updates_collections=None)
 
         # mutual character representation by convolution (word size x character size x embed_dim_w)
         embedding = convolution(embedding, [1, wk, embed_dim_c, embed_dim_w], [1, 1, 1, 1], bias=False, padding='SAME')
         if self.batch_norm is not None:
-            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train)
+            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train,
+                                                     updates_collections=None)
 
         # word representation by max pool over character (word size x 1 x embed_dim_c)
         embedding = tf.nn.max_pool(embedding, ksize=[1, 1, __shape[2], 1], strides=[1, 1, 1, 1], padding='VALID')
@@ -207,11 +214,8 @@ if __name__ == '__main__':
     # Ignore warning message by tensor flow
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     net = {
-        "input_char": [40, 33, 26], "input_word": [40, 300],
-        "n_hidden_1": 64,
-        "n_hidden_2": 128,
-        "n_hidden_3": 256,
-        "label_size": 2,
-        "batch_size": 100
+        "input_char": [40, 33, 26], "input_word": [40, 300], "label_size": 2,
+        "n_hidden_1": 64, "n_hidden_2": 128, "n_hidden_3": 256,
+        "char_embed_dim": 5, "char_cnn_unit": 10, "char_cnn_kernel": 3,  # character embedding
         }
     CharLSTM(net)

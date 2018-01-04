@@ -118,7 +118,8 @@ class CharCNN(object):
         _layer = convolution(embed, _kernel, [1, 1, __feature_size, 1], bias=False)
 
         if self.batch_norm is not None:
-            _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+            _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                  updates_collections=None)
 
         # max pooling over word
         _layer = tf.nn.max_pool(_layer, ksize=[1, __word_size, 1, 1], strides=[1, 1, 1, 1], padding='VALID')
@@ -130,7 +131,8 @@ class CharCNN(object):
         _layer = full_connected(_layer, _weight, bias=False)
 
         if self.batch_norm is not None:
-            _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+            _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                  updates_collections=None)
 
         _layer = tf.nn.tanh(_layer)
 
@@ -142,7 +144,8 @@ class CharCNN(object):
             _layer = full_connected(_layer, _weight)
 
             if self.batch_norm is not None:
-                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                      updates_collections=None)
 
             self.prediction = tf.sigmoid(tf.squeeze(_layer, axis=1))
             # logistic loss
@@ -158,7 +161,8 @@ class CharCNN(object):
             _layer = full_connected(_layer, _weight)
 
             if self.batch_norm is not None:
-                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
+                _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train,
+                                                      updates_collections=None)
 
             self.prediction = tf.nn.softmax(_layer)
             # cross entropy
@@ -168,17 +172,14 @@ class CharCNN(object):
             self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
         # Define optimizer and learning rate: lr = lr/lr_decay
-        # need for BN -> https://www.tensorflow.org/versions/r1.1/api_docs/python/tf/contrib/layers/batch_norm
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            self.lr_decay = tf.placeholder_with_default(1.0, [])
-            optimizer = tf.train.AdamOptimizer(self.learning_rate / self.lr_decay)
-            if self.gradient_clip is not None:
-                _var = tf.trainable_variables()
-                grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, _var), self.gradient_clip)
-                self.train = optimizer.apply_gradients(zip(grads, _var))
-            else:
-                self.train = optimizer.minimize(self.loss)
+        self.lr_decay = tf.placeholder_with_default(1.0, [])
+        optimizer = tf.train.AdamOptimizer(self.learning_rate / self.lr_decay)
+        if self.gradient_clip is not None:
+            _var = tf.trainable_variables()
+            grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, _var), self.gradient_clip)
+            self.train = optimizer.apply_gradients(zip(grads, _var))
+        else:
+            self.train = optimizer.minimize(self.loss)
         # saver
         self.saver = tf.train.Saver()
 
@@ -195,12 +196,14 @@ class CharCNN(object):
         # character level embedding (word size x character size x embed_dim_c)
         embedding = convolution(x, [1, 1, __shape[3], embed_dim_c], [1, 1, 1, 1], bias=False, padding='VALID')
         if self.batch_norm is not None:
-            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train)
+            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train,
+                                                     updates_collections=None)
 
         # mutual character representation by convolution (word size x character size x embed_dim_w)
         embedding = convolution(embedding, [1, wk, embed_dim_c, embed_dim_w], [1, 1, 1, 1], bias=False, padding='SAME')
         if self.batch_norm is not None:
-            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train)
+            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train,
+                                                     updates_collections=None)
 
         # word representation by max pool over character (word size x 1 x embed_dim_c)
         embedding = tf.nn.max_pool(embedding, ksize=[1, 1, __shape[2], 1], strides=[1, 1, 1, 1], padding='VALID')
@@ -219,7 +222,8 @@ class CharCNN(object):
         v_size = x.shape.as_list()[2]
         embedding = convolution(x, [1, v_size, 1, embed_dim], stride=[1, 1, 1, 1], bias=False, padding="VALID")
         if self.batch_norm is not None:
-            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train)
+            embedding = tf.contrib.layers.batch_norm(embedding, decay=self.batch_norm, is_training=self.is_train,
+                                                     updates_collections=None)
         return tf.squeeze(embedding, axis=2)
 
 
