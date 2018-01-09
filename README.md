@@ -41,7 +41,7 @@ At first, variants of CNN model are compared and character-level CNN with dropou
 in CNN model (82 %).
 
 <p align="center">
-  <img src="./img/kstm.png" width="900">
+  <img src="./img/lstm.png" width="900">
   <br><i> Accuracy of LSTM models. log</i>
 </p>
 
