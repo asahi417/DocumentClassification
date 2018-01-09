@@ -29,6 +29,25 @@ Dropout (recurrent dropout for LSTM) and batch normalization for CNN and fully c
 Todo:
 * Layer normalization: when I use [`LayerNormBasicLSTMCell`](https://www.tensorflow.org/api_docs/python/tf/contrib/rnn/LayerNormBasicLSTMCell) with layer_norm, accuracies becomes NaN and it have not solved yet.
 
+## Result
+Let's see the result of classification experiment for Sentiment Treebank.
+
+<p align="center">
+  <img src="./img/cnn.png" width="900">
+  <br><i> Accuracy of CNN models. log</i>
+</p>
+
+At first, variants of CNN model are compared and character-level CNN with dropout achieves the highest validation accuracy
+in CNN model (82 %).
+
+<p align="center">
+  <img src="./img/kstm.png" width="900">
+  <br><i> Accuracy of LSTM models. log</i>
+</p>
+
+At second, LSTM with and without character-level feature are compared.
+Here, the best model is charLSTM with recurrent dropout (83% validation accuracy).
+
 ## Analysis
 In this experiments, 
 
