@@ -42,11 +42,11 @@ def get_model_instance(model_name, embedding_model, learning_rate,
                 "n_hidden_1": 64, "n_hidden_2": 128, "n_hidden_3": 256}
         _model_inputs = model.InputFormat.char_word
     elif model_name == "cnn_gap":
-        _net = {"n_input": [n_word, embedding_model.vector_size, 1], "label_size": label_size}
+        _net = {"input_word": [n_word, embedding_model.vector_size, 1], "label_size": label_size}
         _model = model.GapCNN
         _model_inputs = model.InputFormat.word_3d
     elif model_name == "lstm":
-        _net = {"n_input": [n_word, embedding_model.vector_size], "label_size": label_size,
+        _net = {"input_word": [n_word, embedding_model.vector_size], "label_size": label_size,
                 "n_hidden_1": 64, "n_hidden_2": 128, "n_hidden_3": 256}
         _model = model.LSTM
         _model_inputs = model.InputFormat.basic

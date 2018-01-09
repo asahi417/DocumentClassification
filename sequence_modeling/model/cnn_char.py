@@ -60,7 +60,8 @@ class CharCNN(object):
         :param float keep_prob: (option) keep probability of dropout
         :param str load_model: (option) load saved model
         :param float batch_norm: (option) decay for batch norm. ex) default for 0.999
-                                 https://www.tensorflow.org/api_docs/python/tf/contrib/layers/batch_norm
+                                shadow_variable = decay * shadow_variable + (1 - decay) * variable
+                                https://www.tensorflow.org/api_docs/python/tf/contrib/layers/batch_norm
         """
         self.network_architecture = network_architecture
         self.binary_class = True if self.network_architecture["label_size"] == 2 else False

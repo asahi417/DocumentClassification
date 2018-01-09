@@ -76,7 +76,7 @@ class GapCNN(object):
     def _create_network(self):
         """ Create Network, Define Loss Function and Optimizer """
         # tf Graph input
-        self.x = tf.placeholder(tf.float32, [None] + self.network_architecture["n_input"], name="input")
+        self.x = tf.placeholder(tf.float32, [None] + self.network_architecture["input_word"], name="input")
         if self.binary_class:
             self.y = tf.placeholder(tf.float32, [None], name="output")
         else:
@@ -86,9 +86,9 @@ class GapCNN(object):
         _keep_prob = tf.where(self.is_train, self.keep_prob, 1.0)
 
         # CNN over feature
-        _kernel = [12, self.network_architecture["n_input"][1], 1, 16]
-        _stride = [2, self.network_architecture["n_input"][1]]
-        _layer = convolution(self.x, _kernel, _stride)
+        _kernel = [12, self.network_architecture["input_word"][1], 1, 16]
+        _stride = [1, 2, self.network_architecture["input_word"][1], 1]
+        _layer = convolution(self.x, _kernel, _stride, initializer=variance_scaling_initializer(seed=0))
         if self.batch_norm is not None:
             _layer = tf.contrib.layers.batch_norm(_layer, decay=self.batch_norm, is_training=self.is_train)
         _layer = tf.nn.relu(_layer)
@@ -97,6 +97,7 @@ class GapCNN(object):
         # Pooling over all temporal
         _kernel = [1, _layer.shape.as_list()[1], 1, 1]
         _layer = tf.nn.max_pool(_layer, ksize=_kernel, strides=[1, 1, 1, 1], padding='VALID')
+        _layer = tf.squeeze(_layer, axis=[1, 2])
 
         # Prediction, Loss and Accuracy
         _shape = _layer.shape.as_list()
