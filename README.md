@@ -37,7 +37,7 @@ Let's see the result of classification experiment for Sentiment Treebank.
   <br><i> Accuracy of CNN models. log</i>
 </p>
 
-At first, variants of CNN model are compared and character-level CNN with dropout achieves the highest validation accuracy
+First, variants of CNN model are compared and character-level CNN with dropout achieves the highest validation accuracy
 in CNN model (82 %).
 
 <p align="center">
@@ -45,8 +45,9 @@ in CNN model (82 %).
   <br><i> Accuracy of LSTM models. log</i>
 </p>
 
-At second, LSTM with and without character-level feature are compared.
-Here, the best model is charLSTM with recurrent dropout (83% validation accuracy).
+Second, LSTM with and without character-level feature are compared.
+Here, the best model is charLSTM with recurrent dropout (83% validation accuracy),
+which is the best for all models in this experiments. 
 
 ## Analysis
 In this experiments, 
