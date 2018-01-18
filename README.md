@@ -65,8 +65,8 @@ which achieved about 83 % validation accuracy.
 First, clone the repository and run setup.
 
 ```
-git clone https://github.com/asahi417/SequenceModeling 
-cd SequenceModeling
+git clone https://github.com/asahi417/DocumentClassification 
+cd DocumentClassification
 pip install -r requirements.txt
 python setup.py test
 ```
