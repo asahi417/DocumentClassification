@@ -99,13 +99,15 @@ then you will get following log.
 </p>
 
 
-## Base line check
+### Base line check
 To see how efficient the model is, you can see the base line accuracy by SVM and logistic regression.
 ```
 >>> python bench_mark_accuracy.py 
 ```
 The result is 0.61 % validation accuracy for logistic regression, by which it can be said that
 linear models can not achieve high accuracy in this type of problem.
- 
+
+### Simple classification demo
+WIP
 
 
