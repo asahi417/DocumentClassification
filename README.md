@@ -81,7 +81,7 @@ Thus, the directory would be looks like
 SequenceModeling/
     ├ data/
     : ├ __init__.py
-      ├ sst.py
+      ├ util.py
       ├ GoogleNews-vectors-negative300.bin
       └ stanfordSentimentTreebank/
 ``` 
